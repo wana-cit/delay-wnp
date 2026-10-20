@@ -211,6 +211,7 @@
       (rows || []).map(function (r) { return '<div><span class="pop-k">' + esc(r[0]) + '</span> <span class="mono">' + esc(r[1]) + '</span></div>'; }).join('');
   }
 
+  var ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
   function initMap() {
     S.map = L.map('map', { zoomControl: false, worldCopyJump: true, minZoom: 2 }).setView([30, 50], 3);
     L.control.zoom({ position: 'topright' }).addTo(S.map);
@@ -219,10 +220,23 @@
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Imagery © Esri' }),
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, opacity: 0.6 })
       ]),
-      dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19, subdomains: 'abcd', attribution: '© OpenStreetMap · © CARTO' }),
-      light: L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 19, subdomains: 'abcd', attribution: '© OpenStreetMap · © CARTO' })
+      // Free, key-less basemaps (CARTO now requires an API key, so it is no longer used)
+      dark: L.layerGroup([
+        L.tileLayer(ESRI + 'Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, maxNativeZoom: 16, attribution: 'Basemap © Esri, HERE, Garmin, © OpenStreetMap contributors' }),
+        L.tileLayer(ESRI + 'Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, maxNativeZoom: 16 })
+      ]),
+      light: L.layerGroup([
+        L.tileLayer(ESRI + 'Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, maxNativeZoom: 16, attribution: 'Basemap © Esri, HERE, Garmin, © OpenStreetMap contributors' }),
+        L.tileLayer(ESRI + 'Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, maxNativeZoom: 16 })
+      ]),
+      osm: L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors' })
     };
-    S.base.imagery.addTo(S.map);
+    var savedBase = null;
+    try { savedBase = localStorage.getItem('cdc.base'); } catch (e) {}
+    (S.base[savedBase] || S.base.imagery).addTo(S.map);
+    S.map.on('baselayerchange', function (e) {
+      Object.keys(S.base).forEach(function (k) { if (S.base[k] === e.layer) { try { localStorage.setItem('cdc.base', k); } catch (er) {} } });
+    });
     buildLayerControl();
     if (typeof window.CDC_BASEMAP === 'function') window.CDC_BASEMAP(S.map); // optional offline outline layer
 
@@ -239,7 +253,7 @@
   }
   function buildLayerControl() {
     if (S.layerCtl) S.map.removeControl(S.layerCtl);
-    var o = {}; o[t('layer.imagery')] = S.base.imagery; o[t('layer.dark')] = S.base.dark; o[t('layer.light')] = S.base.light;
+    var o = {}; o[t('layer.imagery')] = S.base.imagery; o[t('layer.dark')] = S.base.dark; o[t('layer.light')] = S.base.light; o[t('layer.osm')] = S.base.osm;
     S.layerCtl = L.control.layers(o, null, { position: 'topright' }).addTo(S.map);
   }
   function refreshMarkers() {

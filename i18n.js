@@ -61,7 +61,7 @@
       'legend.title': 'Legend', 'legend.station': 'Uplink station', 'legend.target': 'Target',
       'legend.upArc': 'Uplink window (AOS–LOS)', 'legend.imgTrack': 'Imaging orbit',
       'legend.comm': 'Radio footprint', 'legend.cam': 'Camera footprint',
-      'layer.imagery': 'Satellite imagery', 'layer.dark': 'Dark map', 'layer.light': 'Light map',
+      'layer.imagery': 'Satellite imagery', 'layer.dark': 'Dark map', 'layer.light': 'Light map', 'layer.osm': 'OpenStreetMap',
       'busy.title': 'Propagating orbit',
 
       'pop.station': 'Uplink station', 'pop.target': 'Target',
@@ -181,7 +181,7 @@
       'legend.title': 'คำอธิบายสัญลักษณ์', 'legend.station': 'สถานีส่งคำสั่ง', 'legend.target': 'เป้าหมาย',
       'legend.upArc': 'ช่วงส่งคำสั่ง (AOS–LOS)', 'legend.imgTrack': 'วงโคจรรอบถ่ายภาพ',
       'legend.comm': 'รัศมีการสื่อสาร', 'legend.cam': 'รัศมีภาพถ่าย',
-      'layer.imagery': 'ภาพดาวเทียม', 'layer.dark': 'แผนที่โทนมืด', 'layer.light': 'แผนที่โทนสว่าง',
+      'layer.imagery': 'ภาพดาวเทียม', 'layer.dark': 'แผนที่โทนมืด', 'layer.light': 'แผนที่โทนสว่าง', 'layer.osm': 'OpenStreetMap (ถนน)',
       'busy.title': 'กำลังคำนวณวงโคจร',
 
       'pop.station': 'สถานีส่งคำสั่ง', 'pop.target': 'เป้าหมาย',
@@ -301,7 +301,7 @@
       'legend.title': '图例', 'legend.station': '上行站', 'legend.target': '目标',
       'legend.upArc': '上行窗口（AOS–LOS）', 'legend.imgTrack': '成像轨道',
       'legend.comm': '通信覆盖', 'legend.cam': '相机覆盖',
-      'layer.imagery': '卫星影像', 'layer.dark': '深色地图', 'layer.light': '浅色地图',
+      'layer.imagery': '卫星影像', 'layer.dark': '深色地图', 'layer.light': '浅色地图', 'layer.osm': 'OpenStreetMap（街道）',
       'busy.title': '正在推算轨道',
 
       'pop.station': '上行站', 'pop.target': '目标',
@@ -380,12 +380,7 @@
 
   function detect() {
     try { var s = localStorage.getItem(KEY); if (LANGS.indexOf(s) >= 0) return s; } catch (e) {}
-    var list = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'en']);
-    for (var i = 0; i < list.length; i++) {
-      var l = String(list[i]).toLowerCase().slice(0, 2);
-      if (LANGS.indexOf(l) >= 0) return l;
-    }
-    return 'en';
+    return 'en';   // default language: English (the visitor's choice is remembered)
   }
 
   function t(key, vars) {

@@ -1,6 +1,6 @@
 {
   "name": "command-delay-calculator",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "KNACKSAT-2 command delay & imaging pass planner (CDH Team)",
   "private": true,
   "scripts": { "test": "node test.js" },
