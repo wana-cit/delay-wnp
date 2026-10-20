@@ -56,9 +56,10 @@ const TLE = `KNACKSAT-2
   const rec = C.makeSatrec(C.parseTLE(TLE));
   const res = await C.plan(rec, new Date('2026-09-01T00:00:00Z'), C.STATIONS.kmutnb, C.TARGETS.paris, { days: 30 });
 
-  await t('Pass counts match Skyfield (47 uplink, 14 imaging)', () => {
+  await t('Pass counts match Skyfield (47 uplink, 14 imaging in daylight)', () => {
     assert.strictEqual(res.uplinks.length, 47);
-    assert.strictEqual(res.targets.length, 14);
+    assert.strictEqual(res.targets.filter(c => c.sunOk).length, 14);
+    assert.strictEqual(res.targets.length, 14 + res.rejectedSun, 'low-Sun passes are kept and flagged');
   });
 
   await t('First uplink pass AOS/TCA/LOS within 1 s of Skyfield', () => {
@@ -70,7 +71,7 @@ const TLE = `KNACKSAT-2
   });
 
   await t('Imaging pass 2026-09-21 and its command delay', () => {
-    const c = res.targets.find(x => x.time.toISOString().startsWith('2026-09-21'));
+    const c = res.targets.find(x => x.sunOk && x.time.toISOString().startsWith('2026-09-21'));
     assert.ok(c, 'pass exists');
     assert.ok(sec(c.time, '2026-09-21T14:57:14Z') < 1);
     near(c.satElev, 76.00, 0.05, 'sat elevation');
@@ -94,7 +95,8 @@ const TLE = `KNACKSAT-2
   await t('Constraints are respected', () => {
     res.targets.forEach(c => {
       assert.ok(c.satElev >= 50);
-      assert.ok(c.sunElev >= 20 && c.sunElev <= 90);
+      if (c.sunOk) assert.ok(c.sunElev >= 20 && c.sunElev <= 90);
+      else assert.strictEqual(c.status === 'sun' || c.status === 'no-uplink', true);
     });
   });
 

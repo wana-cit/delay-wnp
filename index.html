@@ -37,7 +37,7 @@
   --ok:#5fd39f; --warn:#f2bb5c; --bad:#ff6b6b;
   --ocean:#10233b; --land:#2b4466; --land-line:#3b5a82; --grat:rgba(124,196,255,.07);
   --night:rgba(2,6,14,.40); --rim:rgba(124,196,255,.22);
-  --map-filter:saturate(.8) brightness(.82);
+  --map-filter:none;
   --glow:radial-gradient(60% 50% at 50% 45%, rgba(40,86,150,.22), transparent 70%);
   color-scheme:dark;
 }
@@ -154,7 +154,7 @@ textarea.in{font-family:var(--mono);font-size:11.5px;line-height:1.55;min-height
 .tag.ok{color:var(--ok)}.tag.ok::before{background:var(--ok)}
 .tag.warn{color:var(--warn)}.tag.warn::before{background:var(--warn)}
 .tag.bad{color:var(--bad)}.tag.bad::before{background:var(--bad)}
-.tag.pulse::before{background:var(--sat);box-shadow:0 0 0 3px color-mix(in srgb,var(--sat) 25%,transparent);animation:blink 2.4s ease-in-out infinite}
+.tag.pulse::before{background:var(--sat);box-shadow:0 0 0 3px color-mix(in srgb,var(--sat) 25%,transparent)}
 @keyframes blink{50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--sat) 0%,transparent)}}
 
 .foot{padding:14px 16px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--line)}

@@ -11,7 +11,7 @@
   function Globe(canvas) {
     this.cv = canvas;
     this.ctx = canvas.getContext('2d');
-    this.proj = d3.geoOrthographic().clipAngle(90).precision(0.4);
+    this.proj = d3.geoOrthographic().clipAngle(90).precision(1);
     this.path = d3.geoPath(this.proj, this.ctx);
     this.grat = d3.geoGraticule10();
     this.land = null;
@@ -30,55 +30,66 @@
       .on('drag', function (e) {
         var k = 0.25 / self.zoom;
         self.rot = [self.rot[0] + e.dx * k, Math.max(-85, Math.min(85, self.rot[1] - e.dy * k)), 0];
-        self.draw();
+        self.request();
       }));
     canvas.addEventListener('wheel', function (e) {
       e.preventDefault();
       self.zoom = Math.max(0.8, Math.min(3, self.zoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1)));
-      self.draw();
+      self.request();
     }, { passive: false });
 
     this.resize();
     if (root.ResizeObserver) new ResizeObserver(function () { self.resize(); }).observe(canvas.parentNode);
-    this.loop();
+    this.refreshColors();
   }
 
   Globe.prototype.resize = function () {
     var p = this.cv.parentNode, w = p.clientWidth, h = p.clientHeight;
     if (!w || !h) return;
-    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     this.cv.width = Math.round(w * dpr); this.cv.height = Math.round(h * dpr);
     this.cv.style.width = w + 'px'; this.cv.style.height = h + 'px';
     this.w = w; this.h = h; this.dpr = dpr;
-    this.draw();
+    this.request();
   };
 
-  Globe.prototype.setLand = function (geo) { this.land = geo; this.draw(); };
+  Globe.prototype.setLand = function (geo) { this.land = geo; this.request(); };
   Globe.prototype.set = function (s) {
     Object.assign(this.state, s);
     if (this.follow && s.sat) this.goal = [-s.sat.lon, -Math.max(-50, Math.min(50, s.sat.lat)), 0];
-    this.draw();
+    this.request();
   };
   Globe.prototype.setFollow = function (on) {
     this.follow = on;
     if (on && this.state.sat) this.goal = [-this.state.sat.lon, -Math.max(-50, Math.min(50, this.state.sat.lat)), 0];
+    this.request();
   };
 
-  Globe.prototype.loop = function () {
-    var self = this, last = 0;
-    var step = function (now) {
-      requestAnimationFrame(step);
-      if (document.hidden || !self.cv.offsetParent) return;
-      if (now - last < 33) return;                       // ~30 fps
-      last = now;
+  // Draw only when something changed (new position each second, drag, zoom,
+  // or while easing towards the follow target). No continuous animation loop.
+  Globe.prototype.request = function () {
+    if (this.pending) return;
+    var self = this;
+    this.pending = true;
+    requestAnimationFrame(function () {
+      self.pending = false;
+      if (document.hidden || !self.cv.offsetParent) { self.stale = true; return; }
+      var moving = false;
       if (self.goal) {
         var d0 = ((self.goal[0] - self.rot[0] + 540) % 360) - 180, d1 = self.goal[1] - self.rot[1];
-        if (Math.abs(d0) < 0.02 && Math.abs(d1) < 0.02) { self.rot = self.goal.slice(); }
-        else { var k = self.reduce ? 1 : 0.08; self.rot = [self.rot[0] + d0 * k, self.rot[1] + d1 * k, 0]; }
+        if (self.reduce || (Math.abs(d0) < 0.05 && Math.abs(d1) < 0.05)) { self.rot = self.goal.slice(); self.goal = null; }
+        else { self.rot = [self.rot[0] + d0 * 0.15, self.rot[1] + d1 * 0.15, 0]; moving = true; }
       }
-      self.draw(now);
+      self.draw();
+      if (moving) self.request();
+    });
+  };
+  Globe.prototype.refreshColors = function () {
+    this.col = {
+      ocean: css('--ocean'), land: css('--land'), landLine: css('--land-line'), grat: css('--grat'), night: css('--night'),
+      rim: css('--rim'), sat: css('--sat'), up: css('--up'), tgt: css('--tgt'), text: css('--text'), bg: css('--well')
     };
-    requestAnimationFrame(step);
+    this.request();
   };
 
   function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
@@ -92,10 +103,7 @@
     var c = this.ctx, w = this.w, h = this.h, s = this.state, P = this.proj, path = this.path;
     var R = Math.min(w, h) / 2 * 0.88 * this.zoom;
     P.translate([w / 2, h / 2]).scale(R).rotate(this.rot);
-    var col = {
-      ocean: css('--ocean'), land: css('--land'), landLine: css('--land-line'), grat: css('--grat'), night: css('--night'),
-      rim: css('--rim'), sat: css('--sat'), up: css('--up'), tgt: css('--tgt'), text: css('--text'), bg: css('--well')
-    };
+    var col = this.col || {};
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     c.clearRect(0, 0, w, h);
 
@@ -160,8 +168,7 @@
     // satellite with a slow pulse
     if (s.sat && visible(P, [s.sat.lon, s.sat.lat])) {
       var p = P([s.sat.lon, s.sat.lat]);
-      var ph = this.reduce ? 0.5 : (((now || performance.now()) - this.t0) % 2400) / 2400;
-      c.beginPath(); c.arc(p[0], p[1], 6 + ph * 16, 0, 2 * Math.PI); c.strokeStyle = hexA(col.sat, 0.6 * (1 - ph)); c.lineWidth = 1.5; c.stroke();
+      c.beginPath(); c.arc(p[0], p[1], 11, 0, 2 * Math.PI); c.strokeStyle = hexA(col.sat, 0.45); c.lineWidth = 1.5; c.stroke();
       c.beginPath(); c.arc(p[0], p[1], 5, 0, 2 * Math.PI); c.fillStyle = col.sat; c.fill();
       c.lineWidth = 2; c.strokeStyle = col.bg; c.stroke();
       if (s.label) {

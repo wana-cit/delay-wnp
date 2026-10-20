@@ -85,12 +85,13 @@
       'geo.alt': 'Altitude', 'geo.elU': 'Max. elevation (uplink)', 'geo.dur': 'Contact duration',
       'geo.range': 'Slant range at TCA', 'geo.rf': 'One-way RF delay',
 
+      'note.sun': 'Sun elevation at the target is {s}° (limit {a}° to {b}°). The image may be too dark.',
       'note.noUp': 'No uplink pass falls between now and this imaging time. Choose a later pass.',
       'note.far': 'Ground point is {d} km from the target, outside the {r} km camera footprint.',
       'note.tleOld': 'TLE is {d} days old. Times may be off by minutes; fetch a new TLE before commanding.',
       'note.tleAging': 'TLE is {d} days old. Refresh it before sending commands.',
 
-      'st.ok': 'Nominal', 'st.far': 'Off target', 'st.noUp': 'No uplink',
+      'st.ok': 'Nominal', 'st.far': 'Off target', 'st.sun': 'Sun too low', 'st.noUp': 'No uplink',
 
       'empty.none': 'No pass meets the constraints',
       'empty.sun': '{n} passes reach the elevation limit, but the Sun at the target is too low (best {best}°, limit ≥ {min}°).',
@@ -205,12 +206,13 @@
       'geo.alt': 'ความสูงวงโคจร', 'geo.elU': 'มุมเงยสูงสุด (สถานี)', 'geo.dur': 'ระยะเวลาติดต่อ',
       'geo.range': 'ระยะสัญญาณที่ TCA', 'geo.rf': 'เวลาเดินทางสัญญาณ',
 
+      'note.sun': 'มุมดวงอาทิตย์ที่เป้าหมายคือ {s}° (เกณฑ์ {a}° ถึง {b}°) ภาพอาจมืดเกินไป',
       'note.noUp': 'ไม่มีรอบผ่านสถานีระหว่างตอนนี้ถึงเวลาถ่ายภาพ ให้เลือกรอบถัดไป',
       'note.far': 'จุดใต้ดาวเทียมห่างเป้าหมาย {d} km เกินรัศมีภาพ {r} km',
       'note.tleOld': 'TLE มีอายุ {d} วัน เวลาอาจคลาดหลายนาที ควรดึง TLE ใหม่ก่อนส่งคำสั่ง',
       'note.tleAging': 'TLE มีอายุ {d} วัน ควรอัปเดตก่อนส่งคำสั่ง',
 
-      'st.ok': 'ใช้ได้', 'st.far': 'นอกรัศมีภาพ', 'st.noUp': 'ส่งคำสั่งไม่ทัน',
+      'st.ok': 'ใช้ได้', 'st.far': 'นอกรัศมีภาพ', 'st.sun': 'แดดไม่พอ', 'st.noUp': 'ส่งคำสั่งไม่ทัน',
 
       'empty.none': 'ไม่พบรอบที่ผ่านเงื่อนไข',
       'empty.sun': 'มี {n} รอบที่มุมเงยผ่านเกณฑ์ แต่ดวงอาทิตย์ที่เป้าหมายต่ำเกินไป (สูงสุด {best}° เกณฑ์ ≥ {min}°)',
@@ -325,12 +327,13 @@
       'geo.alt': '轨道高度', 'geo.elU': '最大仰角（上行）', 'geo.dur': '通信时长',
       'geo.range': 'TCA 斜距', 'geo.rf': '单程信号延时',
 
+      'note.sun': '目标处太阳高度角为 {s}°（要求 {a}° 至 {b}°），图像可能过暗。',
       'note.noUp': '从现在到该成像时刻之间没有上行过境，请选择更晚的过境。',
       'note.far': '星下点距目标 {d} km，超出 {r} km 相机覆盖范围。',
       'note.tleOld': 'TLE 已有 {d} 天，时间可能偏差数分钟，发送指令前请更新 TLE。',
       'note.tleAging': 'TLE 已有 {d} 天，发送指令前请更新。',
 
-      'st.ok': '可用', 'st.far': '超出覆盖', 'st.noUp': '无法上行',
+      'st.ok': '可用', 'st.far': '超出覆盖', 'st.sun': '光照不足', 'st.noUp': '无法上行',
 
       'empty.none': '没有满足条件的过境',
       'empty.sun': '有 {n} 次过境满足仰角要求，但目标处太阳高度过低（最高 {best}°，要求 ≥ {min}°）。',

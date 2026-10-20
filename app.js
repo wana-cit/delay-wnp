@@ -117,7 +117,7 @@
     try { localStorage.setItem('cdc.theme', next); } catch (e) {}
     themeIcon();
     if (S.result && S.selected >= 0) drawOnMap(S.result.targets[S.selected]);
-    if (S.globe) S.globe.draw();
+    if (S.globe) S.globe.refreshColors();
     S.live.mapDirty = true;
   });
 
@@ -411,7 +411,14 @@
         if (mqSingle.matches) setView('read');
       } else {
         var idx = res.targets.findIndex(function (c) { return c.status === 'ok'; });
-        if (idx < 0) idx = res.targets.findIndex(function (c) { return c.uplink; });
+        if (idx < 0) {   // no fully usable pass: pick the one closest to usable (uplink, in footprint, most Sun)
+          var best = -1, score = -Infinity;
+          res.targets.forEach(function (c, i) {
+            var sc = (c.uplink ? 1000 : 0) + (c.dist <= cfg.cam ? 500 : 0) + c.sunElev;
+            if (sc > score) { score = sc; best = i; }
+          });
+          idx = best;
+        }
         if (idx < 0) idx = 0;
         setMode('map');
         select(idx, true);
@@ -429,7 +436,7 @@
   /* ------------------------------------------------------------------ */
   /*  Passes table                                                       */
   /* ------------------------------------------------------------------ */
-  var ST = { ok: ['ok', 'st.ok'], far: ['warn', 'st.far'], 'no-uplink': ['bad', 'st.noUp'] };
+  var ST = { ok: ['ok', 'st.ok'], far: ['warn', 'st.far'], sun: ['warn', 'st.sun'], 'no-uplink': ['bad', 'st.noUp'] };
   function renderTable() {
     var res = S.result, tb = $('p-tbody'), onlyOk = $('only-ok').checked;
     var list = res ? res.targets : [], shown = 0;
@@ -516,7 +523,8 @@
     var notes = [], cam = S.cfg.cam;
     var age = (Date.now() - S.tle.epoch.getTime()) / 86400000;
     if (!u) notes.push(['bad', t('note.noUp')]);
-    if (c.status === 'far') notes.push(['', t('note.far', { d: c.dist.toFixed(1), r: cam })]);
+    if (!c.sunOk) notes.push(['', t('note.sun', { s: c.sunElev.toFixed(1), a: S.cfg.sunmin, b: S.cfg.sunmax })]);
+    if (c.dist > cam) notes.push(['', t('note.far', { d: c.dist.toFixed(1), r: cam })]);
     if (age > 7) notes.push(['bad', t('note.tleOld', { d: age.toFixed(0) })]);
     else if (age > 3) notes.push(['', t('note.tleAging', { d: age.toFixed(1) })]);
     $('r-notes').innerHTML = notes.map(function (n) { return '<div class="note ' + n[0] + '">' + esc(n[1]) + '</div>'; }).join('');
@@ -642,7 +650,7 @@
     $('stage').setAttribute('data-mode', m);
     document.querySelectorAll('#mode-seg button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.mode === m)); });
     if (m === 'map' && S.map) setTimeout(function () { S.map.invalidateSize(); fitAll(); }, 20);
-    if (m === 'globe' && S.globe) setTimeout(function () { S.globe.resize(); }, 20);
+    if (m === 'globe' && S.globe) setTimeout(function () { S.globe.resize(); S.globe.request(); }, 20);
   }
   document.querySelectorAll('#mode-seg button').forEach(function (b) { b.addEventListener('click', function () { setMode(b.dataset.mode); }); });
 

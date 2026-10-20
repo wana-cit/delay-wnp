@@ -216,18 +216,17 @@
         if (pk.v >= o.minSatElev) {
           var tt = new Date(Math.round(pk.t));
           var sun = sunElevation(tt, target.lat, target.lon);
-          if (sun < o.sunMin || sun > o.sunMax) {
-            rejectedSun++;
-            if (sun > bestRejectedSun) { bestRejectedSun = sun; }
-          } else {
-            var sp = subPoint(satrec, tt);
-            var lk = look(satrec, tt, tgGd);
-            targets.push({
-              time: tt, satElev: pk.v, sunElev: sun, az: lk ? lk.az : null,
-              dist: haversine(sp.lat, sp.lon, target.lat, target.lon), range: lk ? lk.range : null,
-              sub: sp
-            });
-          }
+          var sunOk = sun >= o.sunMin && sun <= o.sunMax;
+          if (!sunOk) { rejectedSun++; if (sun > bestRejectedSun) bestRejectedSun = sun; }
+          // Passes that fail the Sun limit are kept (flagged) so the operator still sees
+          // every geometric opportunity and its command delay.
+          var sp = subPoint(satrec, tt);
+          var lk = look(satrec, tt, tgGd);
+          targets.push({
+            time: tt, satElev: pk.v, sunElev: sun, sunOk: sunOk, az: lk ? lk.az : null,
+            dist: haversine(sp.lat, sp.lon, target.lat, target.lon), range: lk ? lk.range : null,
+            sub: sp
+          });
         }
       }
       p2 = p1; p1 = e;
@@ -271,7 +270,7 @@
       c.delaySec = best ? (c.time - best.tca) / 1000 : null;
       c.delayFromAos = best ? (c.time - best.aos) / 1000 : null;
       c.delayFromLos = best ? (c.time - best.los) / 1000 : null;
-      c.status = !best ? 'no-uplink' : (c.dist > o.camRadius ? 'far' : 'ok');
+      c.status = !best ? 'no-uplink' : !c.sunOk ? 'sun' : (c.dist > o.camRadius ? 'far' : 'ok');
     });
 
     return { targets: targets, uplinks: uplinks, start: start, opts: o, propagationFailures: propagationFailures,
