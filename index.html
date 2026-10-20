@@ -1,1761 +1,621 @@
-﻿<!DOCTYPE html>
-<html lang="th">
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Command Delay Calculator · CDH Team</title>
-<meta name="description" content="ระบบคำนวณเวลาดีเลย์การสั่งงานดาวเทียม — CDH Team Satellite Mission Control">
-
-<!-- Open Graph / Social sharing -->
-<meta property="og:title" content="Command Delay Calculator · CDH Team">
-<meta property="og:description" content="ระบบคำนวณเวลาดีเลย์การสั่งงานดาวเทียม KNACKSAT-2 พร้อมแผนที่วงโคจรแบบ Real-time">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>KNACKSAT-2 Command Delay</title>
+<meta name="theme-color" content="#0a0f17">
+<meta name="description" content="Live tracking, uplink and imaging pass planner for the KNACKSAT-2 satellite — CDH Team">
+<meta property="og:title" content="KNACKSAT-2 Command Delay">
+<meta property="og:description" content="Live tracking, uplink and imaging pass planner for KNACKSAT-2">
 <meta property="og:type" content="website">
-<meta property="og:image" content="assets/og-image.png">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Command Delay Calculator · CDH Team">
-<meta name="twitter:description" content="ระบบคำนวณเวลาดีเลย์การสั่งงานดาวเทียม KNACKSAT-2">
-
-<!-- Favicon -->
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛰️</text></svg>">
-
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-<style>
-/* ═══════════════════════════════════════════════════════
-   THEMES & TOKENS (Default: Light Mode)
-══════════════════════════════════════════════════════ */
-:root, [data-theme="light"] {
-  --c-bg:        #f1f5f9;
-  --c-surface:   #ffffff;
-  --c-panel:     rgba(255, 255, 255, 0.95);
-  --c-card:      #ffffff;
-  --c-card-hover:#f8fafc;
-  --c-border:    rgba(0, 0, 0, 0.08);
-  --c-border-hi: rgba(37, 99, 235, 0.4);
-  --c-blue:      #2563eb;
-  --c-blue-dim:  rgba(37, 99, 235, 0.1);
-  --c-indigo:    #4f46e5;
-  --c-green:     #059669;
-  --c-amber:     #d97706;
-  --c-red:       #dc2626;
-  --c-red-dim:   rgba(220, 38, 38, 0.1);
-  --c-text:      #0f172a;
-  --c-muted:     #64748b;
-  --c-dim:       #334155;
-  --c-input-bg:  #f8fafc;
-  --glass:       blur(16px) saturate(1.8);
-  --r-sm: 8px; --r-md: 12px; --r-lg: 16px;
-  --t: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-[data-theme="dark"] {
-  --c-bg:        #050811;
-  --c-surface:   #0b1222;
-  --c-panel:     rgba(11, 18, 34, 0.94);
-  --c-card:      rgba(15, 25, 48, 0.85);
-  --c-card-hover:rgba(22, 36, 68, 0.95);
-  --c-border:    rgba(255, 255, 255, 0.09);
-  --c-border-hi: rgba(99, 179, 237, 0.4);
-  --c-blue:      #3b82f6;
-  --c-blue-dim:  rgba(59, 130, 246, 0.16);
-  --c-indigo:    #6366f1;
-  --c-green:     #10b981;
-  --c-amber:     #f59e0b;
-  --c-red:       #ef4444;
-  --c-red-dim:   rgba(239, 68, 68, 0.16);
-  --c-text:      #f1f5f9;
-  --c-muted:     #94a3b8;
-  --c-dim:       #cbd5e1;
-  --c-input-bg:  rgba(5,9,18,0.85);
-}
-
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%;width:100%;overflow:hidden;background:var(--c-bg);color:var(--c-text);font-family:'Inter',-apple-system,sans-serif;}
-body{
-  background-image:
-    radial-gradient(ellipse 80% 60% at 10% 0%,   rgba(59,130,246,0.08) 0%, transparent 70%),
-    radial-gradient(ellipse 60% 40% at 90% 10%,  rgba(99,102,241,0.06) 0%, transparent 70%);
-  background-attachment:fixed;
-  transition:background var(--t), color var(--t);
-}
-
-#stars-canvas{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:0.1;}
-[data-theme="dark"] #stars-canvas{opacity:0.4;}
-
-/* ═══════════════════════════════════════════════════════
-   CRITICAL UTILITY CLASSES
-══════════════════════════════════════════════════════ */
-.hide{display:none !important;}
-
-/* Theme toggle button */
-.theme-btn{
-  background:rgba(0,0,0,0.05);
-  border:1px solid var(--c-border);
-  color:var(--c-dim);
-  padding:0.4rem 0.65rem;
-  border-radius:var(--r-sm);
-  font-size:0.78rem;font-weight:700;
-  cursor:pointer;display:flex;align-items:center;gap:0.3rem;
-  transition:all var(--t);font-family:inherit;
-}
-.theme-btn:hover{
-  background:var(--c-blue-dim);
-  border-color:var(--c-blue);
-  color:var(--c-blue);
-}
-[data-theme="dark"] .theme-btn{
-  background:rgba(255,255,255,0.06);
-}
-
-/* ═══════════════════════════════════════════════════════
-   LAYOUT SHELL
-══════════════════════════════════════════════════════ */
-.shell{
-  position:relative;z-index:1;
-  display:flex;height:100vh;height:100dvh;width:100vw;overflow:hidden;
-}
-
-/* Mobile Header / Tab Bar */
-.mobile-nav-bar{
-  display:none;
-  background:var(--c-panel);
-  border-bottom:1px solid var(--c-border);
-  padding:0.5rem 0.75rem;
-  z-index:100;
-  gap:0.4rem;
-  backdrop-filter:var(--glass);
-  -webkit-backdrop-filter:var(--glass);
-}
-.mobile-nav-btn{
-  flex:1;padding:0.55rem 0.4rem;
-  background:rgba(0,0,0,0.04);
-  border:1px solid var(--c-border);
-  border-radius:var(--r-sm);
-  color:var(--c-muted);
-  font-size:0.78rem;font-weight:600;
-  display:flex;align-items:center;justify-content:center;gap:0.35rem;
-  cursor:pointer;transition:all var(--t);
-}
-[data-theme="dark"] .mobile-nav-btn{background:rgba(255,255,255,0.04);}
-.mobile-nav-btn.active{
-  background:var(--c-blue-dim);
-  border-color:var(--c-blue);
-  color:var(--c-blue);
-  font-weight:700;
-}
-
-/* ═══════════════════════════════════════════════════════
-   SIDEBAR
-══════════════════════════════════════════════════════ */
-.sidebar{
-  width:380px;min-width:340px;
-  background:var(--c-panel);
-  backdrop-filter:var(--glass);
-  -webkit-backdrop-filter:var(--glass);
-  border-right:1px solid var(--c-border);
-  display:flex;flex-direction:column;
-  overflow:hidden;
-  box-shadow:6px 0 30px rgba(0,0,0,0.06);
-  position:relative;z-index:20;
-  flex-shrink:0;
-}
-[data-theme="dark"] .sidebar{box-shadow:6px 0 40px rgba(0,0,0,0.4);}
-.sidebar::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:3px;
-  background:linear-gradient(90deg,var(--c-blue),var(--c-indigo));
-}
-
-.brand{
-  padding:1.2rem 1.25rem 1rem;
-  border-bottom:1px solid var(--c-border);
-  flex-shrink:0;
-}
-.brand-logo{display:flex;align-items:center;justify-content:space-between;gap:0.8rem;}
-.brand-icon{
-  width:40px;height:40px;border-radius:12px;
-  background:linear-gradient(135deg,var(--c-blue),var(--c-indigo));
-  display:flex;align-items:center;justify-content:center;
-  font-size:1.2rem;box-shadow:0 4px 16px rgba(59,130,246,0.35);
-  flex-shrink:0;color:#fff;
-}
-.brand-title{font-size:1.05rem;font-weight:800;letter-spacing:-0.3px;line-height:1.2;color:var(--c-text);}
-.brand-sub{font-size:0.7rem;color:var(--c-muted);letter-spacing:0.8px;text-transform:uppercase;margin-top:2px;font-weight:600;}
-
-.sidebar-body{
-  flex:1;overflow-y:auto;padding:1.1rem 1.25rem;
-  display:flex;flex-direction:column;gap:1.1rem;
-  scrollbar-width:thin;scrollbar-color:var(--c-blue-dim) transparent;
-}
-.sidebar-body::-webkit-scrollbar{width:4px}
-.sidebar-body::-webkit-scrollbar-thumb{background:var(--c-blue-dim);border-radius:4px}
-
-.step,.step-card{
-  background:var(--c-card);
-  border:1px solid var(--c-border);
-  border-radius:var(--r-md);
-  padding:1rem;
-  transition:border-color var(--t), background var(--t);
-  box-shadow:0 2px 8px rgba(0,0,0,0.02);
-}
-.step:hover,.step-card:hover{border-color:var(--c-border-hi);}
-
-.step-head,.step-title{
-  display:flex;align-items:center;gap:0.6rem;
-  margin-bottom:0.8rem;
-  font-size:0.8rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--c-dim);
-}
-.step-num{
-  width:24px;height:24px;border-radius:50%;
-  background:linear-gradient(135deg,var(--c-blue),var(--c-indigo));
-  color:#fff;font-size:0.75rem;font-weight:800;
-  display:flex;align-items:center;justify-content:center;
-  box-shadow:0 2px 8px rgba(59,130,246,0.3);
-  flex-shrink:0;
-}
-
-.fgroup{display:flex;flex-direction:column;gap:0.4rem;margin-bottom:0.75rem;}
-.fgroup:last-child{margin-bottom:0;}
-label{font-size:0.78rem;font-weight:600;color:var(--c-dim);display:flex;align-items:center;gap:0.3rem;}
-
-select,input[type=datetime-local],input[type=text],input[type=number],textarea{
-  width:100%;
-  min-height:40px;
-  background:var(--c-input-bg);
-  border:1px solid var(--c-border);
-  color:var(--c-text);
-  padding:0.6rem 0.8rem;
-  border-radius:var(--r-sm);
-  font-family:inherit;font-size:0.85rem;
-  transition:border-color var(--t),box-shadow var(--t),background var(--t);
-  appearance:none;-webkit-appearance:none;
-}
-select{
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;background-position:right 0.75rem center;
-  padding-right:2.2rem;
-}
-select:focus,input:focus,textarea:focus{
-  outline:none;
-  border-color:var(--c-blue);
-  box-shadow:0 0 0 3px var(--c-blue-dim);
-}
-textarea{
-  font-family:'JetBrains Mono',monospace;font-size:0.76rem;
-  color:var(--c-indigo);resize:vertical;min-height:72px;line-height:1.5;
-}
-.help{font-size:0.72rem;color:var(--c-muted);margin-top:0.2rem;}
-
-.custom-box{
-  background:rgba(0,0,0,0.03);border:1px solid var(--c-border);
-  border-radius:var(--r-sm);padding:0.75rem;
-  display:flex;flex-direction:column;gap:0.5rem;
-  margin-top:0.5rem;
-}
-[data-theme="dark"] .custom-box{background:rgba(0,0,0,0.35);}
-.or-line{text-align:center;font-size:0.7rem;color:var(--c-muted);letter-spacing:1px;}
-.lat-lon-row{display:flex;gap:0.5rem;}
-.lat-lon-row .coord{flex:1;display:flex;align-items:center;gap:0.35rem;}
-.lat-lon-row label{color:var(--c-amber);font-family:'JetBrains Mono',monospace;font-size:0.75rem;min-width:24px;margin:0;}
-.lat-lon-row input{font-size:0.82rem;padding:0.45rem 0.6rem;font-family:'JetBrains Mono',monospace;}
-
-.sidebar-foot{padding:1rem 1.25rem 1.2rem;flex-shrink:0;border-top:1px solid var(--c-border);background:var(--c-panel);}
-.calc-btn{
-  width:100%;min-height:48px;padding:0.85rem 1rem;font-size:0.95rem;font-weight:800;
-  border:none;border-radius:var(--r-md);cursor:pointer;font-family:inherit;
-  background:linear-gradient(135deg,#2563eb 0%,#4f46e5 50%,#7c3aed 100%);
-  color:#fff;letter-spacing:0.3px;
-  box-shadow:0 4px 20px rgba(79,70,229,0.35);
-  position:relative;overflow:hidden;
-  transition:all var(--t);
-  display:flex;align-items:center;justify-content:center;gap:0.6rem;
-}
-.calc-btn:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(79,70,229,0.5);}
-.calc-btn:active{transform:translateY(0);}
-.calc-btn:disabled{opacity:0.65;cursor:not-allowed;transform:none;}
-.spin{animation:rotating 0.75s linear infinite;}
-@keyframes rotating{to{transform:rotate(360deg)}}
-
-/* ═══════════════════════════════════════════════════════
-   MAIN AREA
-══════════════════════════════════════════════════════ */
-.main{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;min-width:0;}
-
-.warn-bar{
-  display:none;align-items:center;gap:0.6rem;
-  padding:0.65rem 1.25rem;font-size:0.85rem;font-weight:500;
-  background:var(--c-red-dim);border-bottom:1px solid rgba(239,68,68,0.3);
-  color:var(--c-red);flex-shrink:0;flex-wrap:wrap;z-index:30;
-}
-.warn-bar.show{display:flex;}
-.suggest-btn{
-  margin-left:auto;display:flex;align-items:center;gap:0.35rem;
-  background:var(--c-red);border:none;
-  color:#fff;border-radius:6px;padding:0.35rem 0.75rem;
-  font-size:0.8rem;font-weight:700;cursor:pointer;font-family:inherit;
-  transition:all 0.2s ease;white-space:nowrap;
-}
-.suggest-btn:hover{opacity:0.9;}
-
-/* Map Wrap */
-.map-wrap{flex:1;position:relative;background:var(--c-bg);overflow:hidden;min-height:280px;}
-#map{width:100%;height:100%;}
-
-.map-chip{
-  position:absolute;z-index:500;
-  background:var(--c-panel);
-  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-  border:1px solid var(--c-border);border-radius:var(--r-md);
-  padding:0.45rem 0.85rem;font-size:0.78rem;color:var(--c-dim);
-  display:flex;align-items:center;gap:0.45rem;pointer-events:none;
-  box-shadow:0 4px 16px rgba(0,0,0,0.06);
-}
-.status-chip{top:1rem;right:1rem;}
-.dot{
-  width:9px;height:9px;border-radius:50%;flex-shrink:0;
-  background:var(--c-green);box-shadow:0 0 10px var(--c-green);
-  transition:background 0.3s,box-shadow 0.3s;
-}
-.legend-chip{bottom:1rem;left:1rem;flex-direction:column;align-items:flex-start;gap:0.35rem;padding:0.65rem 0.85rem;}
-.leg{display:flex;align-items:center;gap:0.5rem;font-size:0.75rem;}
-.leg-dot{width:10px;height:10px;border-radius:50%;border:2px solid var(--c-muted);flex-shrink:0;}
-
-/* ═══════════════════════════════════════════════════════
-   RESULTS GRID
-══════════════════════════════════════════════════════ */
-.results{
-  background:var(--c-panel);
-  border-top:1px solid var(--c-border);
-  padding:0.75rem 1rem;
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
-  gap:0.6rem;
-  flex-shrink:0;
-  backdrop-filter:blur(16px);
-  -webkit-backdrop-filter:blur(16px);
-  max-height:45vh;overflow-y:auto;
-}
-
-.rcard{
-  background:var(--c-card);
-  border:1px solid var(--c-border);
-  border-radius:var(--r-md);
-  padding:0.65rem 0.85rem;
-  position:relative;overflow:hidden;
-  transition:border-color var(--t),transform var(--t),background var(--t);
-  display:flex;flex-direction:column;justify-content:center;
-  box-shadow:0 2px 6px rgba(0,0,0,0.02);
-}
-.rcard::after{
-  content:'';position:absolute;top:0;left:0;right:0;height:3px;
-  border-radius:3px 3px 0 0;
-}
-.rcard.r-primary::after{background:linear-gradient(90deg,var(--c-blue),var(--c-indigo));}
-.rcard.r-time::after  {background:linear-gradient(90deg,var(--c-green),#34d399);}
-.rcard.r-info::after  {background:linear-gradient(90deg,var(--c-amber),#fb923c);}
-.rcard:hover{transform:translateY(-2px);border-color:var(--c-border-hi);background:var(--c-card-hover);}
-
-.rcard-head{display:flex;align-items:center;gap:0.4rem;margin-bottom:0.3rem;}
-.rcard-icon{font-size:0.85rem;line-height:1;}
-.rcard-label{
-  font-size:0.7rem;text-transform:uppercase;letter-spacing:0.8px;
-  color:var(--c-muted);font-weight:700;flex:1;
-}
-.copy-btn{
-  background:rgba(0,0,0,0.04);border:1px solid var(--c-border);color:var(--c-muted);
-  border-radius:4px;padding:0.2rem 0.35rem;cursor:pointer;
-  display:flex;align-items:center;transition:all var(--t);
-}
-[data-theme="dark"] .copy-btn{background:rgba(255,255,255,0.05);}
-.copy-btn:hover{background:var(--c-blue-dim);border-color:var(--c-blue);color:var(--c-blue);}
-
-.delay-big{display:flex;align-items:baseline;gap:0.3rem;line-height:1.1;}
-.delay-num{
-  font-size:1.75rem;font-weight:900;color:var(--c-text);
-  font-variant-numeric:tabular-nums;letter-spacing:-0.5px;
-}
-.delay-unit{font-size:0.78rem;color:var(--c-muted);font-weight:600;}
-.delay-hms{
-  font-family:'JetBrains Mono',monospace;
-  font-size:0.85rem;font-weight:600;color:var(--c-amber);
-  background:var(--c-blue-dim);border:1px solid var(--c-border);
-  padding:0.2rem 0.45rem;border-radius:6px;
-  display:inline-block;letter-spacing:1px;margin-top:0.3rem;width:fit-content;
-}
-
-.time-val{
-  font-family:'JetBrains Mono',monospace;
-  font-size:0.78rem;font-weight:600;color:var(--c-text);
-  margin-top:0.15rem;letter-spacing:0.3px;
-}
-
-.metric-num{
-  font-size:1.3rem;font-weight:800;color:var(--c-text);
-  font-variant-numeric:tabular-nums;letter-spacing:-0.5px;
-}
-.metric-unit{font-size:0.75rem;color:var(--c-muted);font-weight:600;}
-.metric-sub{font-size:0.68rem;color:var(--c-muted);margin-top:0.15rem;font-weight:500;}
-
-/* Countdown Bar */
-.countdown-bar{
-  background:var(--c-panel);
-  border-top:1px solid var(--c-border);
-  padding:0.55rem 1rem;
-  display:flex;align-items:center;gap:1.5rem;justify-content:space-around;
-  flex-wrap:wrap;z-index:10;
-}
-.cd-item{display:flex;align-items:center;gap:0.6rem;}
-.cd-icon{font-size:1.1rem;}
-.cd-label{font-size:0.7rem;color:var(--c-muted);text-transform:uppercase;letter-spacing:0.8px;font-weight:700;}
-.cd-value{
-  font-family:'JetBrains Mono',monospace;
-  font-size:0.9rem;font-weight:700;
-  color:var(--c-green);letter-spacing:0.8px;
-}
-.cd-value.urgent{color:var(--c-amber);}
-.cd-value.past{color:var(--c-red);}
-
-/* Photo Table */
-.photo-table-wrap{
-  background:var(--c-panel);
-  border-top:1px solid var(--c-border);
-  flex-shrink:0;overflow:hidden;
-  max-height:0;transition:max-height 0.4s cubic-bezier(0.4,0,0.2,1);
-}
-.photo-table-wrap.show{max-height:220px;overflow-y:auto;overflow-x:auto;}
-.photo-table-wrap::-webkit-scrollbar{width:4px;height:4px;}
-.photo-table-wrap::-webkit-scrollbar-thumb{background:var(--c-blue-dim);border-radius:4px;}
-.photo-table-title{
-  padding:0.6rem 1rem;font-size:0.78rem;font-weight:800;
-  color:var(--c-dim);text-transform:uppercase;letter-spacing:1px;
-  display:flex;align-items:center;gap:0.5rem;
-  border-bottom:1px solid var(--c-border);
-  position:sticky;top:0;background:var(--c-panel);z-index:2;
-}
-.photo-table{width:100%;border-collapse:collapse;font-size:0.8rem;white-space:nowrap;}
-.photo-table th{
-  text-align:left;padding:0.5rem 0.8rem;font-weight:700;
-  color:var(--c-muted);font-size:0.7rem;text-transform:uppercase;
-  letter-spacing:0.6px;border-bottom:1px solid var(--c-border);
-  position:sticky;top:33px;background:var(--c-panel);z-index:1;
-}
-.photo-table td{
-  padding:0.5rem 0.8rem;border-bottom:1px solid var(--c-border);
-  color:var(--c-text);font-family:'JetBrains Mono',monospace;font-size:0.76rem;
-}
-.photo-table tr{cursor:pointer;transition:background 0.15s ease;}
-.photo-table tbody tr:hover{background:var(--c-blue-dim);}
-.photo-table tbody tr.selected{
-  background:var(--c-blue-dim);
-  outline:1px solid var(--c-blue);
-}
-.photo-table tbody tr.selected td{color:var(--c-blue);font-weight:700;}
-.photo-table .badge{
-  display:inline-block;padding:0.18rem 0.5rem;border-radius:6px;
-  font-size:0.68rem;font-weight:700;font-family:'Inter',sans-serif;
-}
-.badge-ok{background:rgba(16,185,129,0.15);color:var(--c-green);}
-.badge-warn{background:rgba(245,158,11,0.15);color:var(--c-amber);}
-
-/* ═══════════════════════════════════════════════════════
-   RESPONSIVE BREAKPOINTS
-══════════════════════════════════════════════════════ */
-@media(max-width:960px){
-  html,body{overflow:auto;}
-  .shell{flex-direction:column;height:auto;min-height:100vh;min-height:100dvh;overflow:visible;}
-  
-  .mobile-nav-bar{display:flex;}
-  
-  .sidebar{
-    width:100%;min-width:unset;border-right:none;border-bottom:1px solid var(--c-border);
-    box-shadow:none;max-height:none;height:auto;
-  }
-  .sidebar-body{overflow-y:visible;}
-  
-  .main{height:auto;overflow:visible;}
-  .map-wrap{height:50vh;min-height:350px;}
-  .results{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));max-height:none;}
-  
-  .map-chip.legend-chip{padding:0.4rem 0.6rem;font-size:0.7rem;}
-  .legend-chip .leg{font-size:0.7rem;}
-}
-
-@media(max-width:640px){
-  .brand{padding:1rem;}
-  .sidebar-body{padding:0.85rem;}
-  .sidebar-foot{padding:0.85rem;}
-  .results{grid-template-columns:repeat(2,1fr);gap:0.5rem;padding:0.5rem;}
-  .rcard{padding:0.5rem 0.65rem;}
-  .delay-num{font-size:1.4rem;}
-  .metric-num{font-size:1.1rem;}
-  .lat-lon-row{flex-direction:column;gap:0.4rem;}
-  .lat-lon-row .coord{width:100% !important;}
-  .map-chip.status-chip{top:0.5rem;right:0.5rem;padding:0.3rem 0.6rem;font-size:0.7rem;}
-  .map-chip.legend-chip{bottom:0.5rem;left:0.5rem;padding:0.4rem 0.5rem;}
-}
-/* ═══════════════════════════════════════════════════════
-   RESPONSIVE BREAKPOINTS (Desktop, Tablet, Mobile)
-══════════════════════════════════════════════════════ */
-@media(max-width:960px){
-  html,body{overflow:auto;}
-  .shell{flex-direction:column;height:auto;min-height:100vh;min-height:100dvh;overflow:visible;}
-  
-  .mobile-nav-bar{display:flex;}
-  
-  .sidebar{
-    width:100%;min-width:unset;border-right:none;border-bottom:1px solid var(--c-border);
-    box-shadow:none;max-height:none;height:auto;
-  }
-  .sidebar-body{overflow-y:visible;}
-  
-  .main{height:auto;overflow:visible;}
-  .map-wrap{height:50vh;min-height:350px;}
-  .results{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));max-height:none;}
-  
-  .map-chip.legend-chip{padding:0.4rem 0.6rem;font-size:0.7rem;}
-  .legend-chip .leg{font-size:0.7rem;}
-}
-
-@media(max-width:640px){
-  .brand{padding:1rem;}
-  .sidebar-body{padding:0.85rem;}
-  .sidebar-foot{padding:0.85rem;}
-  .results{grid-template-columns:repeat(2,1fr);gap:0.5rem;padding:0.5rem;}
-  .rcard{padding:0.5rem 0.65rem;}
-  .delay-num{font-size:1.4rem;}
-  .metric-num{font-size:1.1rem;}
-  .lat-lon-row{flex-direction:column;gap:0.4rem;}
-  .lat-lon-row .coord{width:100% !important;}
-  .map-chip.status-chip{top:0.5rem;right:0.5rem;padding:0.3rem 0.6rem;font-size:0.7rem;}
-  .map-chip.legend-chip{bottom:0.5rem;left:0.5rem;padding:0.4rem 0.5rem;}
-}
-
-
-
-/* Progress Overlay */
-.progress-overlay{
-  position:absolute;inset:0;z-index:600;
-  background:var(--c-panel);
-  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-  display:none;flex-direction:column;align-items:center;justify-content:center;
-  gap:0.5rem;padding:2rem;
-}
-.progress-overlay.show{display:flex;}
-.progress-text{
-  font-size:0.9rem;font-weight:600;color:var(--c-dim);
-  letter-spacing:0.3px;
-}
-.progress-bar-wrap{
-  width:280px;max-width:80%;height:6px;
-  background:var(--c-border);border-radius:6px;
-  overflow:hidden;margin-top:0.5rem;
-}
-.progress-bar-fill{
-  height:100%;width:0%;
-  background:linear-gradient(90deg,var(--c-blue),var(--c-indigo));
-  border-radius:6px;
-  transition:width 0.3s ease;
-}
-</style>
+<meta property="og:site_name" content="INSTED · KMUTNB">
+<meta name="author" content="CDH Team, KNACKSAT Program, INSTED KMUTNB">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <script>
-  (function(){
-    var saved = localStorage.getItem('theme');
-    if(saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    }
-  })();
+  try { if (localStorage.getItem('cdc.theme') === 'light') document.documentElement.setAttribute('data-theme', 'light'); } catch (e) {}
 </script>
+<style>
+/* =====================================================================
+   Layout concept: an observatory console. A live globe is the centre
+   piece; instruments sit around it on deep navy, titanium text,
+   ivory controls. International orange is reserved for the satellite.
+   Brand: INSTED blue #264D7E (logo), used for identity and primary
+   actions in day mode.
+   ===================================================================== */
+:root, [data-theme="dark"] {
+  --bg:#070b12; --panel:#0d131d; --raise:#121a27; --well:#081019; --hover:#16202f;
+  --line:rgba(176,198,228,.09); --line-2:rgba(176,198,228,.17);
+  --text:#eef1f5; --text-2:#b6c0cd; --muted:#7c8899;
+  --ivory:#f1ede4; --ivory-ink:#0b111a; --brand:#264d7e; --brand-hi:#9ab8e0;
+  --sat:#ff7a3d; --up:#7cc4ff; --tgt:#ff5d6c;
+  --ok:#5fd39f; --warn:#f2bb5c; --bad:#ff6b6b;
+  --ocean:#10233b; --land:#2b4466; --land-line:#3b5a82; --grat:rgba(124,196,255,.07);
+  --night:rgba(2,6,14,.40); --rim:rgba(124,196,255,.22);
+  --map-filter:saturate(.8) brightness(.82);
+  --glow:radial-gradient(60% 50% at 50% 45%, rgba(40,86,150,.22), transparent 70%);
+  color-scheme:dark;
+}
+[data-theme="light"] {
+  --bg:#edf1f6; --panel:#ffffff; --raise:#f5f7fa; --well:#f4f7fb; --hover:#eef3f9;
+  --line:rgba(16,30,52,.09); --line-2:rgba(16,30,52,.17);
+  --text:#0d1622; --text-2:#3a4757; --muted:#667386;
+  --ivory:#264d7e; --ivory-ink:#ffffff; --brand:#264d7e; --brand-hi:#264d7e;
+  --sat:#e2561b; --up:#2a64ad; --tgt:#d42a3c;
+  --ok:#1a8a55; --warn:#a86a00; --bad:#c62828;
+  --ocean:#d7e3f0; --land:#b3c3d6; --land-line:#9aaec5; --grat:rgba(31,116,201,.10);
+  --night:rgba(10,22,40,.13); --rim:rgba(31,116,201,.18);
+  --map-filter:none;
+  --glow:radial-gradient(60% 50% at 50% 45%, rgba(31,116,201,.10), transparent 70%);
+  color-scheme:light;
+}
+:root{
+  --display:'Chakra Petch','IBM Plex Sans Thai','Noto Sans SC',system-ui,sans-serif;
+  --sans:'IBM Plex Sans','IBM Plex Sans Thai','Noto Sans SC',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;
+  --top:58px; --tabs:60px; --gap:10px; --side:340px; --read:390px; --r:8px;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font:13.5px/1.55 var(--sans);-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0}
+:focus-visible{outline:2px solid var(--up);outline-offset:2px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.hide{display:none!important}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.cap{font-family:var(--display);font-weight:500;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-2)}
+html[lang="th"] .cap,html[lang="zh"] .cap{letter-spacing:.03em;font-size:13px}
+
+/* ---------------- top bar ---------------- */
+.top{height:var(--top);display:flex;align-items:center;gap:18px;padding:0 18px;border-bottom:1px solid var(--line);background:var(--bg);position:relative;z-index:30}
+.brand{display:flex;align-items:center;gap:16px;min-width:0}
+.org{display:flex;align-items:center;flex-shrink:0;border-radius:4px}
+.org img{display:block;height:40px;width:auto}
+.org .seal{display:none;height:32px}
+.org .full.on-light{display:none}
+[data-theme="light"] .org .full.on-dark{display:none}
+[data-theme="light"] .org .full.on-light{display:block}
+.vsep{width:1px;height:28px;background:var(--line-2);flex-shrink:0}
+.credit{font-size:11.5px;color:var(--muted);line-height:1.5}
+.credit a{color:var(--brand-hi);text-decoration:none}
+.credit a:hover{text-decoration:underline}
+.brand-t{display:flex;flex-direction:column;line-height:1.15;min-width:0}
+.brand-t b{font-family:var(--display);font-weight:600;font-size:16px;letter-spacing:.06em}
+.brand-t span{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fill{flex:1}
+.clocks{display:flex;gap:22px}
+.clk{display:flex;flex-direction:column;align-items:flex-end;line-height:1.2}
+.clk .k{font-family:var(--display);font-size:10.5px;letter-spacing:.16em;color:var(--muted)}
+.clk .v{font-family:var(--mono);font-size:15px;color:var(--text)}
+.seg{display:inline-flex;padding:3px;gap:2px;border:1px solid var(--line-2);border-radius:999px;background:var(--panel)}
+.seg button{padding:4px 11px;border-radius:999px;font-size:12.5px;color:var(--text-2);white-space:nowrap;min-height:28px}
+.seg button:hover{color:var(--text)}
+.seg button[aria-pressed="true"]{background:var(--ivory);color:var(--ivory-ink);font-weight:600}
+.icon-btn{width:36px;height:36px;display:grid;place-items:center;border-radius:50%;border:1px solid var(--line-2);color:var(--text-2);flex-shrink:0}
+.icon-btn:hover{color:var(--text);background:var(--hover)}
+.icon-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.6}
+
+/* ---------------- layout ---------------- */
+.layout{height:calc(100dvh - var(--top));padding:var(--gap);display:grid;gap:var(--gap);
+  grid-template-columns:var(--side) minmax(0,1fr) var(--read);grid-template-rows:minmax(0,1fr) 250px;
+  grid-template-areas:"setup map read" "setup passes read"}
+.p-setup{grid-area:setup}.p-map{grid-area:map}.p-read{grid-area:read}.p-passes{grid-area:passes}
+.main-col{display:contents}
+.pane{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);min-width:0;min-height:0;display:flex;flex-direction:column;position:relative;overflow:hidden}
+.head{min-height:44px;flex-shrink:0;display:flex;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid var(--line)}
+.head .meta{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted)}
+.scroll{overflow:auto;scrollbar-width:thin;scrollbar-color:var(--line-2) transparent}
+.scroll::-webkit-scrollbar{width:8px;height:8px}
+.scroll::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:8px}
+
+/* ---------------- setup ---------------- */
+.setup-body{flex:1}
+.grp{padding:16px;border-bottom:1px solid var(--line)}
+.grp:last-child{border-bottom:0}
+.grp-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field + .field{margin-top:10px}
+.field > label{font-size:12.5px;color:var(--text-2)}
+.in{width:100%;min-height:38px;padding:8px 11px;background:var(--well);border:1px solid var(--line-2);border-radius:6px;color:var(--text);font-size:13.5px;transition:border-color .15s,box-shadow .15s}
+.in:hover{border-color:var(--muted)}
+.in:focus{outline:none;border-color:var(--up);box-shadow:0 0 0 3px color-mix(in srgb,var(--up) 22%,transparent)}
+.in[aria-invalid="true"]{border-color:var(--bad);box-shadow:0 0 0 3px color-mix(in srgb,var(--bad) 20%,transparent)}
+select.in{appearance:none;-webkit-appearance:none;padding-right:32px;
+  background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+  background-position:calc(100% - 17px) 52%,calc(100% - 12px) 52%;background-size:5px 5px;background-repeat:no-repeat}
+textarea.in{font-family:var(--mono);font-size:11.5px;line-height:1.55;min-height:78px;resize:vertical;white-space:pre;overflow-x:auto}
+.u{position:relative}
+.u .in{padding-right:42px;font-family:var(--mono)}
+.u span{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--muted);pointer-events:none;font-family:var(--mono)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+.g2 .field + .field{margin-top:0}
+.hint{font-size:12px;color:var(--muted);margin-top:8px}
+.coord{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:6px}
+.err{font-size:12.5px;color:var(--bad);margin-top:10px}
+.custom{margin-top:10px;padding:12px;border:1px dashed var(--line-2);border-radius:6px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;margin-top:10px;font-size:12.5px}
+.kv dt{color:var(--muted)}
+.kv dd{font-family:var(--mono);color:var(--text-2)}
+.btn{display:inline-flex;align-items:center;gap:7px;min-height:32px;padding:5px 12px;border:1px solid var(--line-2);border-radius:999px;font-size:12.5px;color:var(--text-2);white-space:nowrap;transition:background .15s,color .15s}
+.btn:hover:not(:disabled){background:var(--hover);color:var(--text)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.7}
+.row-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+
+.tag{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;white-space:nowrap;color:var(--text-2)}
+.tag::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0}
+.tag.ok{color:var(--ok)}.tag.ok::before{background:var(--ok)}
+.tag.warn{color:var(--warn)}.tag.warn::before{background:var(--warn)}
+.tag.bad{color:var(--bad)}.tag.bad::before{background:var(--bad)}
+.tag.pulse::before{background:var(--sat);box-shadow:0 0 0 3px color-mix(in srgb,var(--sat) 25%,transparent);animation:blink 2.4s ease-in-out infinite}
+@keyframes blink{50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--sat) 0%,transparent)}}
+
+.foot{padding:14px 16px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--line)}
+.go{width:100%;min-height:48px;background:var(--ivory);color:var(--ivory-ink);border-radius:999px;font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.04em;display:flex;align-items:center;justify-content:center;gap:10px;transition:transform .15s,opacity .15s}
+.go:hover{opacity:.92}
+.go:active{transform:scale(.99)}
+.go:disabled{opacity:.7;cursor:progress}
+.foot-row{display:flex;justify-content:space-between;gap:8px;margin-top:10px;font-size:12px;color:var(--muted)}
+.link{color:var(--muted);text-decoration:underline;text-underline-offset:3px;font-size:12px}
+.link:hover{color:var(--text)}
+
+/* ---------------- stage (globe / map) ---------------- */
+.stage{flex:1;position:relative;background:var(--well)}
+.stage::before{content:"";position:absolute;inset:0;background:var(--glow);pointer-events:none}
+#globe{position:absolute;inset:0;cursor:grab;touch-action:none}
+#globe:active{cursor:grabbing}
+#map{position:absolute;inset:0;background:var(--well)}
+.stage[data-mode="globe"] #map{visibility:hidden}
+.stage[data-mode="map"] #globe{display:none}
+.stage[data-mode="map"]::before{display:none}
+.leaflet-tile-pane{filter:var(--map-filter)}
+.leaflet-container{font-family:var(--sans);background:var(--well)}
+.leaflet-bar{border:1px solid var(--line-2)!important;border-radius:8px!important;overflow:hidden;box-shadow:none!important}
+.leaflet-bar a{background:var(--panel)!important;color:var(--text-2)!important;border-color:var(--line)!important}
+.leaflet-control-layers{background:var(--panel)!important;color:var(--text)!important;border:1px solid var(--line-2)!important;border-radius:8px!important;box-shadow:none!important}
+.leaflet-control-layers-expanded{padding:8px 12px!important;font-size:12.5px}
+.leaflet-control-attribution{background:color-mix(in srgb,var(--panel) 80%,transparent)!important;color:var(--muted)!important;font-size:10px}
+.leaflet-control-attribution a{color:var(--text-2)!important}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--panel);color:var(--text);border:1px solid var(--line-2);box-shadow:0 18px 40px -20px rgba(0,0,0,.6)}
+.leaflet-popup-content-wrapper{border-radius:8px}
+.leaflet-popup-content{margin:12px 14px;font-size:12.5px;line-height:1.6}
+.pop-h{font-family:var(--display);font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-2);margin-bottom:4px;font-size:12px}
+.pop-k{color:var(--muted)}
+.mk-gs{width:12px;height:12px;background:var(--up);border:2px solid var(--well);transform:rotate(45deg);margin:5px}
+.mk-tg{width:16px;height:16px;border:2px solid var(--tgt);border-radius:50%;margin:3px;position:relative}
+.mk-tg::after{content:"";position:absolute;inset:4px;border-radius:50%;background:var(--tgt)}
+.mk-sat{width:12px;height:12px;border-radius:50%;border:2px solid var(--well);background:var(--sat);margin:3px}
+.mk-sat.up{background:var(--up)}
+.mk-live{width:18px;height:18px;border-radius:50%;background:var(--sat);border:3px solid var(--well);box-shadow:0 0 0 4px color-mix(in srgb,var(--sat) 30%,transparent)}
+
+.ov{position:absolute;z-index:500;background:color-mix(in srgb,var(--panel) 92%,transparent);border:1px solid var(--line-2);border-radius:8px}
+.ov-status{top:12px;left:12px;display:flex;align-items:center;gap:9px;padding:6px 12px;font-size:12.5px;max-width:calc(100% - 80px)}
+.ov-status .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);flex-shrink:0}
+.ov-status[data-type="info"] .dot{background:var(--up)}
+.ov-status[data-type="warn"] .dot{background:var(--warn)}
+.ov-status[data-type="err"] .dot{background:var(--bad)}
+.ov-pin{top:52px;left:12px;display:flex;align-items:center;gap:8px;padding:4px 4px 4px 12px;font-size:12px;color:var(--text-2)}
+.ov-pin .seg{border:0;padding:0;background:none}
+.ov-legend{bottom:12px;left:12px;font-size:12px;color:var(--text-2);max-width:calc(100% - 24px)}
+.ov-legend summary{list-style:none;cursor:pointer;padding:6px 12px}
+.ov-legend summary::-webkit-details-marker{display:none}
+.ov-legend[open] summary{border-bottom:1px solid var(--line)}
+.ov-legend ul{list-style:none;padding:8px 12px 10px;display:grid;gap:5px}
+.ov-legend li{display:flex;align-items:center;gap:9px}
+.sw{width:18px;height:12px;display:grid;place-items:center;flex-shrink:0}
+.sw i{display:block}
+.ov-follow{right:12px;bottom:12px;display:flex;align-items:center;gap:8px;padding:6px 12px;font-size:12.5px;color:var(--text-2);cursor:pointer}
+.ov-follow:hover{color:var(--text)}
+.ov-follow[aria-pressed="true"]{color:var(--sat);border-color:color-mix(in srgb,var(--sat) 50%,transparent)}
+.stage[data-mode="map"] .g-only{display:none}
+.stage[data-mode="globe"] .m-only{display:none}
+.ov-sum{display:none}
+.busy{position:absolute;inset:0;z-index:600;display:none;place-items:center;background:color-mix(in srgb,var(--bg) 60%,transparent);backdrop-filter:blur(2px)}
+.busy.on{display:grid}
+.busy-box{width:min(300px,80%);padding:16px 18px}
+.busy-v{font-family:var(--display);font-size:28px;margin:4px 0 10px}
+.meter{height:3px;background:var(--line-2);border-radius:3px;overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--sat)}
+
+/* ---------------- readout ---------------- */
+.read-body{flex:1;align-content:start}
+.live{padding:16px 16px 14px;border-bottom:1px solid var(--line)}
+.live-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.live-state{font-family:var(--display);font-size:20px;font-weight:600;letter-spacing:.02em}
+.live-state.on{color:var(--ok)}
+.live-next{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:10px 12px;background:var(--well);border:1px solid var(--line);border-radius:6px}
+.live-next .k{font-size:12px;color:var(--muted)}
+.live-next .v{font-family:var(--mono);font-size:20px;color:var(--text)}
+.live-next .s{font-family:var(--mono);font-size:11.5px;color:var(--muted);text-align:right}
+.lgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 12px;margin-top:12px}
+.lgrid .k{font-size:11.5px;color:var(--muted)}
+.lgrid .v{font-family:var(--mono);font-size:14px;color:var(--text)}
+.lgrid .v small{color:var(--muted);font-size:11px;margin-left:3px}
+
+.empty{padding:26px 18px;color:var(--muted);font-size:13px;text-align:center}
+.empty .t{color:var(--text-2);margin-bottom:6px;font-weight:500}
+.delay{padding:18px 16px 14px;border-bottom:1px solid var(--line)}
+.delay-h{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.delay-v{font-family:var(--display);font-weight:500;font-size:52px;line-height:1;letter-spacing:-.01em;margin-top:10px;color:var(--text)}
+.delay-v small{font-family:var(--sans);font-size:15px;color:var(--muted);margin-left:8px;letter-spacing:0}
+.delay-hms{font-family:var(--mono);font-size:15px;color:var(--sat);margin-top:8px}
+.delay-alt{font-size:12px;color:var(--muted);margin-top:4px}
+.notes:empty{display:none}
+.notes{padding:12px 16px;border-bottom:1px solid var(--line);display:grid;gap:8px}
+.note{font-size:12.5px;padding:8px 10px;border-radius:6px;background:color-mix(in srgb,var(--warn) 12%,transparent);color:var(--text)}
+.note.bad{background:color-mix(in srgb,var(--bad) 14%,transparent)}
+.sect{border-bottom:1px solid var(--line)}
+.sect-h{padding:14px 16px 6px}
+table.ev{width:100%;border-collapse:collapse;font-size:12.5px}
+.ev th{font-weight:400;text-align:left;color:var(--muted);padding:4px 16px;font-size:11.5px}
+.ev td{padding:7px 16px;border-top:1px solid var(--line);font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ev td:first-child{font-family:var(--sans);color:var(--text-2)}
+.ev .tm{text-align:right}
+.ev tr.now td{color:var(--muted)}
+.ev .past{color:var(--muted)}
+.ev .soon{color:var(--warn)}
+.ev tr.key td:first-child{color:var(--text)}
+.ev tr.key.img td:first-child{box-shadow:inset 3px 0 0 var(--sat)}
+.ev tr.key.up td:first-child{box-shadow:inset 3px 0 0 var(--up)}
+.geo{display:grid;grid-template-columns:1fr 1fr;padding:0 16px 10px;gap:0 16px}
+.geo > div{padding:9px 0;border-top:1px solid var(--line)}
+.geo .k{font-size:12px;color:var(--muted)}
+.geo .v{font-family:var(--mono);font-size:16px;font-variant-numeric:tabular-nums}
+.geo .v small{font-size:11.5px;color:var(--muted);margin-left:4px}
+.geo .v.ok{color:var(--ok)}.geo .v.warn{color:var(--warn)}
+.read-actions{padding:14px 16px;display:flex;gap:8px;flex-wrap:wrap}
+
+/* ---------------- passes ---------------- */
+.p-body{flex:1}
+table.ps{width:100%;border-collapse:collapse;font-size:12.5px}
+.ps th{position:sticky;top:0;z-index:1;background:var(--panel);text-align:left;font-weight:400;color:var(--muted);font-size:11.5px;padding:8px 9px;border-bottom:1px solid var(--line-2);white-space:nowrap}
+.ps td{padding:8px 9px;border-bottom:1px solid var(--line);font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--text-2)}
+.ps .n{text-align:right}
+.ps tbody tr{cursor:pointer;transition:background .12s}
+.ps tbody tr:hover{background:var(--hover)}
+.ps tbody tr[aria-selected="true"]{background:color-mix(in srgb,var(--sat) 9%,transparent)}
+.ps tbody tr[aria-selected="true"] td{color:var(--text)}
+.ps tbody tr[aria-selected="true"] td:first-child{box-shadow:inset 3px 0 0 var(--sat)}
+.ps td .tag{font-family:var(--sans)}
+.p-empty{padding:26px;text-align:center;color:var(--muted)}
+.chk{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);cursor:pointer}
+.chk input{accent-color:var(--sat);width:15px;height:15px}
+@media (max-width:1599px){.ps .c-utc{display:none}}
+
+.tabs{display:none}
+.toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,8px);z-index:1000;background:var(--ivory);color:var(--ivory-ink);padding:9px 16px;font-size:13px;border-radius:999px;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* ---------------- responsive ---------------- */
+@media (max-width:1100px){.org .full{height:32px}}
+@media (max-width:1359px){
+  :root{--side:320px}
+  .layout{grid-template-columns:var(--side) minmax(0,1fr);grid-template-rows:minmax(0,1fr);grid-template-areas:none}
+  .p-setup{grid-column:1;grid-row:1}
+  .main-col{display:flex;flex-direction:column;gap:var(--gap);grid-column:2;grid-row:1;overflow-y:auto;min-height:0;border-radius:var(--r)}
+  .p-map{height:min(62vh,640px);min-height:360px;flex-shrink:0}
+  .p-read,.p-passes{flex-shrink:0;overflow:visible}
+  .read-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .read-body > .live,.read-body > .delay,.read-body > .notes,.read-body > .empty,.read-body > .read-actions{grid-column:1/-1}
+  .read-body > .ev-s{border-right:1px solid var(--line)}
+  .lgrid{grid-template-columns:repeat(6,1fr)}
+  .p-passes{min-height:300px}
+}
+@media (max-width:899px){
+  :root{--gap:0px}
+  .layout{display:block;padding:0;height:calc(100dvh - var(--top) - var(--tabs) - env(safe-area-inset-bottom))}
+  .main-col{display:block;height:100%;overflow:visible;border-radius:0}
+  .pane{display:none;height:100%;border:0;border-radius:0}
+  body[data-view="setup"] .p-setup,body[data-view="passes"] .p-passes{display:flex}
+  body[data-view="map"] .p-map{display:flex;height:100%;min-height:0}
+  body[data-view="read"] .p-read{display:flex}
+  .p-read .read-body{overflow-y:auto}
+  .tabs{display:grid;grid-template-columns:repeat(4,1fr);position:fixed;left:0;right:0;bottom:0;z-index:40;
+    height:calc(var(--tabs) + env(safe-area-inset-bottom));padding:6px 8px calc(6px + env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--line);gap:4px}
+  .tab{border-radius:999px;color:var(--muted);font-size:13px;display:flex;align-items:center;justify-content:center;gap:6px}
+  .tab[aria-selected="true"]{color:var(--ivory-ink);background:var(--ivory);font-weight:600}
+  .tab .cnt{font-family:var(--mono);font-size:11px;opacity:.7}
+  .toast{bottom:calc(var(--tabs) + 14px + env(safe-area-inset-bottom))}
+  .ov-sum{display:block;right:12px;bottom:56px;padding:9px 13px;text-align:left;cursor:pointer}
+  .ov-sum.hide{display:none}
+  .ov-sum .v{font-family:var(--display);font-size:22px;line-height:1.2}
+  .ov-sum .s{font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .clk.utc{display:none}
+}
+@media (min-width:600px) and (max-width:899px){
+  .setup-body{display:grid;grid-template-columns:1fr 1fr;align-content:start}
+  .setup-body .grp:first-child,.setup-body .grp:nth-last-child(2),.setup-body .grp:last-child{grid-column:1/-1}
+  .setup-body .grp:nth-child(2){border-right:1px solid var(--line)}
+  .setup-body .grp:nth-last-child(2) .g2{grid-template-columns:repeat(4,1fr)}
+  .read-body{display:grid;grid-template-columns:1fr 1fr}
+  .read-body > .live,.read-body > .delay,.read-body > .notes,.read-body > .empty,.read-body > .read-actions{grid-column:1/-1}
+  .read-body > .ev-s{border-right:1px solid var(--line)}
+  .lgrid{grid-template-columns:repeat(6,1fr)}
+}
+@media (max-width:599px){
+  :root{--top:54px}
+  .top{gap:10px;padding:0 12px}
+  .brand-t span{display:none}
+  .vsep{height:24px}
+  #map-meta{display:none}
+  .head .cap{white-space:nowrap}
+  .org .full{display:none!important}
+  .org .seal.on-dark{display:block}
+  [data-theme="light"] .org .seal.on-dark{display:none}
+  [data-theme="light"] .org .seal.on-light{display:block}
+  .brand{gap:10px}
+  .seg button{padding:4px 8px}
+  .in{font-size:16px}
+  textarea.in{font-size:11px}
+  .delay-v{font-size:44px}
+  .read-body{display:block}
+  .read-body > .ev-s{border-right:0}
+  .lgrid{grid-template-columns:repeat(3,1fr)}
+  .ps thead{display:none}
+  .ps,.ps tbody,.ps tr,.ps td{display:block;width:100%}
+  .ps tr{display:grid!important;grid-template-columns:1fr auto;gap:2px 12px;padding:11px 16px;border-bottom:1px solid var(--line)}
+  .ps td{padding:0;border:0;white-space:normal}
+  .ps td[data-l]::before{content:attr(data-l) " ";font-family:var(--sans);color:var(--muted);font-size:11.5px}
+  .ps td.c-idx,.ps td.c-utc{display:none}
+  .ps td.c-ict{color:var(--text);font-size:14px;white-space:nowrap}
+  .ps td.c-st{grid-column:2;grid-row:1;text-align:right}
+  .ps .n{text-align:left}
+  .ps tbody tr[aria-selected="true"]{box-shadow:inset 3px 0 0 var(--sat)}
+  .ps tbody tr[aria-selected="true"] td:first-child{box-shadow:none}
+}
+@media (max-width:479px){.clocks{display:none}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
 </head>
-<body>
+<body data-view="setup">
 
-<canvas id="stars-canvas"></canvas>
-
-<div class="shell">
-
-  <!-- Mobile Navigation Bar -->
-  <div class="mobile-nav-bar">
-    <button type="button" class="mobile-nav-btn active" onclick="scrollToSection('sidebar')">⚙️ ตั้งค่า</button>
-    <button type="button" class="mobile-nav-btn" onclick="scrollToSection('map-wrap')">🗺️ แผนที่ &amp; ผลลัพธ์</button>
-    <button type="button" class="mobile-nav-btn" onclick="scrollToSection('photo-table-wrap')">📋 รายการรอบ</button>
+<header class="top">
+  <div class="brand">
+    <a class="org" href="https://insted.kmutnb.ac.th/" target="_blank" rel="noopener" title="INSTED · KMUTNB">
+      <img class="full on-dark" src="assets/insted-logo-white.png" width="139" height="40" alt="INSTED — International Institute of Space Technology for Economic Development, KMUTNB">
+      <img class="full on-light" src="assets/insted-logo-blue.png" width="139" height="40" alt="INSTED — International Institute of Space Technology for Economic Development, KMUTNB">
+      <img class="seal on-dark" src="assets/insted-seal-white.png" width="32" height="32" alt="INSTED, KMUTNB">
+      <img class="seal on-light" src="assets/insted-seal-blue.png" width="32" height="32" alt="INSTED, KMUTNB">
+    </a>
+    <span class="vsep" aria-hidden="true"></span>
+    <div class="brand-t"><b>KNACKSAT-2</b><span data-i18n="app.name">Command Delay Planner</span></div>
   </div>
+  <div class="fill"></div>
+  <div class="clocks">
+    <div class="clk utc"><span class="k" id="clk-doy">UTC</span><span class="v" id="clk-utc">--:--:--</span></div>
+    <div class="clk"><span class="k">ICT</span><span class="v" id="clk-ict">--:--:--</span></div>
+  </div>
+  <div class="seg" role="group" aria-label="Language" id="lang-seg">
+    <button type="button" data-lang="th" aria-pressed="false" lang="th">ไทย</button>
+    <button type="button" data-lang="en" aria-pressed="false" lang="en">EN</button>
+    <button type="button" data-lang="zh" aria-pressed="false" lang="zh">中文</button>
+  </div>
+  <button type="button" class="icon-btn" id="theme-btn" data-i18n-title="theme.toggle" data-i18n-aria="theme.toggle"></button>
+</header>
 
-  <!-- ══════════════ SIDEBAR ══════════════ -->
-  <aside class="sidebar">
+<div class="layout">
 
-    <!-- Brand -->
-        <div class="brand">
-      <div class="brand-logo">
-        <div style="display:flex;align-items:center;gap:0.8rem;">
-          <div class="brand-icon">🛰️</div>
-          <div>
-            <div class="brand-title">Command Delay Calculator</div>
-            <div class="brand-sub">CDH Team · Satellite Mission Control</div>
+  <!-- =============== SETUP =============== -->
+  <aside class="pane p-setup" aria-labelledby="h-setup">
+    <div class="head"><span class="cap" id="h-setup" data-i18n="tab.setup">Setup</span></div>
+    <form class="setup-body scroll" id="plan-form" novalidate>
+      <section class="grp">
+        <div class="grp-h"><span class="cap" data-i18n="tle.title">Satellite elements (TLE)</span><span id="tle-age"></span></div>
+        <label class="sr" for="tle" data-i18n="tle.title">Satellite elements (TLE)</label>
+        <textarea class="in scroll" id="tle" rows="3" spellcheck="false" autocomplete="off">KNACKSAT-2
+1 67683U 98067YA  26292.96894180  .00102897  00000-0  69579-3 0  9992
+2 67683  51.6246  20.9907 0009702 327.2749  32.7648 15.74175365 39832</textarea>
+        <dl class="kv" id="tle-kv"></dl>
+        <div class="row-btns"><button type="button" class="btn" id="tle-fetch"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg><span data-i18n="tle.fetch">Fetch latest TLE</span></button></div>
+      </section>
+
+      <section class="grp">
+        <div class="grp-h"><span class="cap" data-i18n="up.title">Uplink station</span></div>
+        <label class="sr" for="sel-uplink" data-i18n="up.title">Uplink station</label>
+        <select class="in" id="sel-uplink">
+          <option value="kmutnb" data-i18n="up.kmutnb">KMUTNB Techno Park, Bangkok</option>
+          <option value="custom" data-i18n="loc.custom">Custom coordinates</option>
+        </select>
+        <div class="coord" id="uplink-hint"></div>
+        <div class="custom hide" id="uplink-custom">
+          <div class="field"><label for="uplink-link" data-i18n="loc.paste">Paste a Google Maps link or “lat, lon”</label><input class="in" id="uplink-link" type="text" placeholder="13.8240, 100.5126" autocomplete="off"></div>
+          <div class="g2" style="margin-top:10px">
+            <div class="field"><label for="uplink-lat" data-i18n="loc.lat">Latitude</label><input class="in mono" id="uplink-lat" type="number" step="any" inputmode="decimal"></div>
+            <div class="field"><label for="uplink-lon" data-i18n="loc.lon">Longitude</label><input class="in mono" id="uplink-lon" type="number" step="any" inputmode="decimal"></div>
           </div>
+          <p class="hint" data-i18n="loc.mapHint">You can also click the map or drag the marker.</p>
         </div>
-        <button type="button" class="theme-btn" id="theme-toggle" title="Toggle Light/Dark Theme">
-          <span id="theme-icon">🌙</span>
-        </button>
-      </div>
+      </section>
+
+      <section class="grp">
+        <div class="grp-h"><span class="cap" data-i18n="tg.title">Imaging target</span></div>
+        <label class="sr" for="sel-target" data-i18n="tg.title">Imaging target</label>
+        <select class="in" id="sel-target">
+          <option value="paris" data-i18n="tg.paris">Eiffel Tower, Paris</option>
+          <option value="custom" data-i18n="loc.custom">Custom coordinates</option>
+        </select>
+        <div class="coord" id="target-hint"></div>
+        <div class="custom hide" id="target-custom">
+          <div class="field"><label for="target-link" data-i18n="loc.paste">Paste a Google Maps link or “lat, lon”</label><input class="in" id="target-link" type="text" placeholder="48.85837, 2.29448" autocomplete="off"></div>
+          <div class="g2" style="margin-top:10px">
+            <div class="field"><label for="target-lat" data-i18n="loc.lat">Latitude</label><input class="in mono" id="target-lat" type="number" step="any" inputmode="decimal"></div>
+            <div class="field"><label for="target-lon" data-i18n="loc.lon">Longitude</label><input class="in mono" id="target-lon" type="number" step="any" inputmode="decimal"></div>
+          </div>
+          <p class="hint" data-i18n="loc.mapHint">You can also click the map or drag the marker.</p>
+        </div>
+      </section>
+
+      <section class="grp">
+        <div class="grp-h"><span class="cap" data-i18n="cfg.title">Constraints</span></div>
+        <div class="g2">
+          <div class="field"><label for="cfg-days" data-i18n="cfg.days">Search window</label><div class="u"><input class="in" id="cfg-days" type="number" min="1" max="60" step="1" value="30" inputmode="numeric"><span data-i18n="unit.days">d</span></div></div>
+          <div class="field"><label for="cfg-sat" data-i18n="cfg.sat">Min. elevation at target</label><div class="u"><input class="in" id="cfg-sat" type="number" min="0" max="90" step="1" value="50" inputmode="decimal"><span>°</span></div></div>
+          <div class="field"><label for="cfg-sunmin" data-i18n="cfg.sunmin">Sun elevation min.</label><div class="u"><input class="in" id="cfg-sunmin" type="number" min="-90" max="90" step="1" value="20" inputmode="decimal"><span>°</span></div></div>
+          <div class="field"><label for="cfg-sunmax" data-i18n="cfg.sunmax">Sun elevation max.</label><div class="u"><input class="in" id="cfg-sunmax" type="number" min="-90" max="90" step="1" value="90" inputmode="decimal"><span>°</span></div></div>
+          <div class="field"><label for="cfg-gs" data-i18n="cfg.gs">Min. elevation for uplink</label><div class="u"><input class="in" id="cfg-gs" type="number" min="0" max="89" step="1" value="20" inputmode="decimal"><span>°</span></div></div>
+          <div class="field"><label for="cfg-lead" data-i18n="cfg.lead">Min. lead time</label><div class="u"><input class="in" id="cfg-lead" type="number" min="0" max="86400" step="10" value="60" inputmode="numeric"><span>s</span></div></div>
+          <div class="field"><label for="cfg-cam" data-i18n="cfg.cam">Camera footprint radius</label><div class="u"><input class="in" id="cfg-cam" type="number" min="1" max="2000" step="1" value="100" inputmode="decimal"><span>km</span></div></div>
+          <div class="field"><label for="cfg-comm" data-i18n="cfg.comm">Radio footprint radius</label><div class="u"><input class="in" id="cfg-comm" type="number" min="1" max="5000" step="1" value="420" inputmode="decimal"><span>km</span></div></div>
+        </div>
+        <p class="err hide" id="cfg-err" role="alert"></p>
+      </section>
+      <div class="credit grp"><span data-i18n="credit.by">Developed by the CDH Team, KNACKSAT Program</span><br><a href="https://insted.kmutnb.ac.th/" target="_blank" rel="noopener" data-i18n="credit.org">INSTED, King Mongkut's University of Technology North Bangkok</a></div>
+    </form>
+    <div class="foot">
+      <button type="submit" form="plan-form" class="go" id="calc-btn"><span id="calc-lbl" data-i18n="calc.run">Compute plan</span></button>
+      <div class="foot-row"><span data-i18n="calc.shortcut">Ctrl / ⌘ + Enter</span><button type="button" class="link" id="reset-btn" data-i18n="calc.reset">Reset to defaults</button></div>
     </div>
-
-    <!-- Scrollable steps -->
-    <div class="sidebar-body">
-
-      <!-- ── STEP 1: Satellite ────────── -->
-      <div class="step">
-        <div class="step-head">
-          <div class="step-num">1</div>
-          <div class="step-title">Satellite Data (TLE)</div>
-        </div>
-        <div class="fgroup">
-          <textarea id="tle-input" rows="3" spellcheck="false" style="font-size:0.7rem;line-height:1.4">KNACKSAT-2
-1 67683U 98067XZ  26243.45609269  .00053825  00000-0  49349-3 0  9993
-2 67683  51.6250 273.9102 0007537 104.1040 256.0794 15.67179025 32053</textarea>
-        </div>
-      </div>
-
-      <!-- ── STEP 2: Uplink ─────────────────── -->
-      <div class="step">
-        <div class="step-head">
-          <div class="step-num">2</div>
-          <div class="step-title">Uplink Station (สถานีส่งคำสั่ง)</div>
-        </div>
-        <div class="fgroup">
-          <select id="sel-uplink">
-            <option value="kmutnb">📡 KMUTNB TECHNO PARK, Bangkok</option>
-            <option value="custom">✏️ Custom (Pin on map / Type coords)</option>
-          </select>
-        </div>
-        <div id="uplink-custom" class="custom-box hide">
-          <div class="fgroup" style="margin-bottom:0">
-            <input type="text" id="uplink-link" placeholder="Google Maps Link หรือ 'Lat, Lon'">
-          </div>
-          <div class="or-line">─── หรือพิมพ์ตรงๆ ───</div>
-          <div class="lat-lon-row">
-            <div class="coord"><label>Lat</label><input type="number" id="uplink-lat" step="any" value="13.824017540980227"></div>
-            <div class="coord"><label>Lon</label><input type="number" id="uplink-lon" step="any" value="100.5126084380669"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── STEP 3: Target ──────────────────── -->
-      <div class="step">
-        <div class="step-head">
-          <div class="step-num">3</div>
-          <div class="step-title">Target Location (เป้าหมาย)</div>
-        </div>
-
-        <div class="fgroup">
-          <label for="sel-target">เป้าหมาย</label>
-          <select id="sel-target">
-            <option value="paris">🗼 Paris, France</option>
-            <option value="custom">✏️ Custom (Pin on map / Type coords)</option>
-          </select>
-        </div>
-
-        <div id="target-custom" class="custom-box hide">
-          <div class="fgroup" style="margin-bottom:0">
-            <label>Google Maps Link หรือ "Lat, Lon"</label>
-            <input type="text" id="target-link" placeholder="เช่น 48.8566, 2.3522 หรือ maps.google.com/...">
-          </div>
-          <div class="or-line">─── หรือพิมพ์ตรงๆ ───</div>
-          <div class="lat-lon-row">
-            <div class="coord">
-              <label>Lat</label>
-              <input type="number" id="target-lat" step="0.0001" value="46.6034">
-            </div>
-            <div class="coord">
-              <label>Lon</label>
-              <input type="number" id="target-lon" step="0.0001" value="1.8883">
-            </div>
-          </div>
-          <small class="help">💡 หรือ คลิกบนแผนที่เพื่อปักหมุด</small>
-        </div>
-      </div>
-
-      <!-- Step 4: Constraints -->
-      <div class="step-card">
-        <div class="step-title">
-          <span class="step-num">4</span> เงื่อนไขการถ่ายภาพ (Constraints)
-        </div>
-        <div class="fgroup">
-          <div class="lat-lon-row">
-            <div class="coord">
-              <label title="ค้นหาล่วงหน้ากี่วัน (SEARCH_DAYS)">ค้นหาล่วงหน้า (วัน)</label>
-              <input type="number" id="cfg-search-days" value="30">
-            </div>
-            <div class="coord">
-              <label title="มุมเงยดาวเทียม ณ เป้าหมาย (MIN_SAT_ELEVATION_DEG)">ดาวเทียมเป้าหมาย (°)</label>
-              <input type="number" id="cfg-sat-elev" step="1" value="50">
-            </div>
-          </div>
-          <div class="lat-lon-row" style="margin-top:0.5rem">
-            <div class="coord">
-              <label title="แสงแดดขั้นต่ำ (SUN_ELEVATION_MIN_DEG)">แดดขั้นต่ำ (°)</label>
-              <input type="number" id="cfg-sun-min" step="1" value="20">
-            </div>
-            <div class="coord">
-              <label title="แสงแดดสูงสุด (SUN_ELEVATION_MAX_DEG)">แดดสูงสุด (°)</label>
-              <input type="number" id="cfg-sun-max" step="1" value="90">
-            </div>
-          </div>
-          <div class="lat-lon-row" style="margin-top:0.5rem">
-            <div class="coord">
-              <label title="มุมเงยดาวเทียมตอนส่งคำสั่ง (MIN_GS_ELEVATION_DEG)">ดาวเทียมรับคำสั่ง (°)</label>
-              <input type="number" id="cfg-gs-elev" step="1" value="20">
-            </div>
-            <div class="coord">
-              <label title="รัศมีการถ่ายภาพสูงสุด (Camera Footprint Radius in km)">รัศมีกล้อง (km)</label>
-              <input type="number" id="cfg-cam-radius" step="1" value="100">
-            </div>
-          </div>
-          <div class="lat-lon-row" style="margin-top:0.5rem">
-            <div class="coord" style="width:100%">
-              <label title="รัศมีการรับส่งสัญญาณ (Comm Footprint Radius in km)">รัศมีรับส่งสัญญาณ (km)</label>
-              <input type="number" id="cfg-comm-radius" step="1" value="420">
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div><!-- /sidebar-body -->
-
-    <!-- Calculate -->
-    <div class="sidebar-foot">
-      <div style="font-size:0.75rem; color:var(--c-muted); margin-bottom:0.5rem; text-align:center;">
-        🕒 เวลาปัจจุบัน (Local): <span id="live-clock" style="color:var(--c-amber); font-weight:600; font-family:'JetBrains Mono',monospace;">--:--:--</span>
-      </div>
-      <button type="button" class="calc-btn" id="calc-btn">
-        <span class="btn-label" id="btn-label">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-          🚀 คำนวณแผนภารกิจถ่ายภาพ
-        </span>
-        <span class="btn-spin hide" id="btn-spin">
-          <svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-          กำลังประมวลผล...
-        </span>
-      </button>
-    </div>
-
   </aside>
 
-  <!-- ══════════════ MAIN ══════════════ -->
-  <main class="main">
-
-    <!-- Warning bar -->
-    <div class="warn-bar" id="warn-bar">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-      <span id="warn-text"></span>
-      <button id="suggest-btn" class="suggest-btn hide" onclick="applySuggestedTime()">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-        ใช้เวลาที่แนะนำ &amp; คำนวณใหม่
-      </button>
-    </div>
-
-    <!-- Map -->
-    <div class="map-wrap">
-      <div id="map"></div>
-
-      <!-- Progress overlay -->
-      <div class="progress-overlay" id="progress-overlay">
-        <div style="font-size:2.5rem;margin-bottom:0.5rem;">🛰️</div>
-        <div class="progress-text" id="progress-text">กำลังค้นหารอบถ่ายภาพ...</div>
-        <div class="progress-bar-wrap">
-          <div class="progress-bar-fill" id="progress-fill"></div>
+  <div class="main-col scroll">
+    <!-- =============== STAGE =============== -->
+    <section class="pane p-map" aria-labelledby="h-map">
+      <div class="head">
+        <span class="cap" id="h-map" data-i18n="map.stage">Orbit view</span>
+        <span class="meta">
+          <span class="mono" id="map-meta"></span>
+          <span class="seg" role="group" id="mode-seg">
+            <button type="button" data-mode="globe" aria-pressed="true" data-i18n="view.globe">Live globe</button>
+            <button type="button" data-mode="map" aria-pressed="false" data-i18n="view.map">Plan map</button>
+          </span>
+        </span>
+      </div>
+      <div class="stage" id="stage" data-mode="globe">
+        <canvas id="globe" role="img" data-i18n-aria="view.globe"></canvas>
+        <div id="map"></div>
+        <div class="ov ov-status" id="status" data-type="ok" role="status" aria-live="polite"><span class="dot"></span><span id="status-t"></span></div>
+        <div class="ov ov-pin hide m-only" id="pin-ctl" role="group">
+          <span data-i18n="pin.label">Place marker</span>
+          <span class="seg">
+            <button type="button" data-pin="uplink" aria-pressed="false" data-i18n="pin.uplink">Station</button>
+            <button type="button" data-pin="target" aria-pressed="false" data-i18n="pin.target">Target</button>
+          </span>
+        </div>
+        <details class="ov ov-legend" id="legend">
+          <summary data-i18n="legend.title">Legend</summary>
+          <ul>
+            <li><span class="sw"><i style="width:10px;height:10px;border-radius:50%;background:var(--sat)"></i></span><span data-i18n="legend.now">Satellite now</span></li>
+            <li><span class="sw"><i style="width:9px;height:9px;background:var(--up);transform:rotate(45deg)"></i></span><span data-i18n="legend.station">Uplink station</span></li>
+            <li><span class="sw"><i style="width:12px;height:12px;border:2px solid var(--tgt);border-radius:50%"></i></span><span data-i18n="legend.target">Target</span></li>
+            <li class="g-only"><span class="sw"><i style="width:18px;border-top:2px solid var(--sat)"></i></span><span data-i18n="legend.track">Ground track (past · next)</span></li>
+            <li class="m-only"><span class="sw"><i style="width:18px;border-top:2px dotted var(--text-2)"></i></span><span data-i18n="legend.track">Ground track (past · next)</span></li>
+            <li class="m-only"><span class="sw"><i style="width:18px;border-top:3px dashed var(--up)"></i></span><span data-i18n="legend.nextArc">Next contact window</span></li>
+            <li class="g-only"><span class="sw"><i style="width:14px;height:12px;background:var(--night);border:1px solid var(--line-2)"></i></span><span data-i18n="legend.night">Night side</span></li>
+            <li class="m-only"><span class="sw"><i style="width:18px;border-top:4px solid var(--up)"></i></span><span data-i18n="legend.upArc">Uplink window (AOS–LOS)</span></li>
+            <li class="m-only"><span class="sw"><i style="width:18px;border-top:2px solid var(--sat)"></i></span><span data-i18n="legend.imgTrack">Imaging orbit</span></li>
+            <li><span class="sw"><i style="width:12px;height:12px;border:1.5px dashed var(--up);border-radius:50%"></i></span><span><span data-i18n="legend.comm">Radio footprint</span> <span class="mono" id="lg-comm">420</span> km</span></li>
+            <li class="m-only"><span class="sw"><i style="width:12px;height:12px;border:1.5px solid var(--sat);border-radius:50%"></i></span><span><span data-i18n="legend.cam">Camera footprint</span> <span class="mono" id="lg-cam">100</span> km</span></li>
+          </ul>
+        </details>
+        <button type="button" class="ov ov-follow g-only" id="follow-btn" aria-pressed="true"><span data-i18n="globe.follow">Follow satellite</span></button>
+        <button type="button" class="ov ov-sum hide m-only" id="map-sum"><span class="cap" data-i18n="read.delay">Command delay</span><div class="v" id="ms-v">--</div><div class="s" id="ms-s"></div></button>
+        <div class="busy" id="busy" aria-live="polite">
+          <div class="busy-box ov" style="position:static"><span class="cap" data-i18n="busy.title">Propagating orbit</span><div class="busy-v" id="busy-v">0%</div><div class="meter"><i id="busy-bar"></i></div></div>
         </div>
       </div>
+    </section>
 
-      <!-- Status chip -->
-      <div class="map-chip status-chip">
-        <div class="dot" id="status-dot"></div>
-        <span id="status-text">System Ready</span>
-      </div>
+    <!-- =============== READOUT =============== -->
+    <section class="pane p-read" aria-labelledby="h-read">
+      <div class="head"><span class="cap" id="h-read" data-i18n="read.title">Mission readout</span><span class="meta" id="r-tag"></span></div>
+      <div class="read-body scroll">
 
-      <!-- Legend chip -->
-      <div class="map-chip legend-chip">
-        <div class="leg"><div class="leg-dot" style="background:#3b82f6;box-shadow:0 0 5px #3b82f6"></div>Uplink Station</div>
-        <div class="leg"><div class="leg-dot" style="background:#ef4444;box-shadow:0 0 5px #ef4444"></div>Target</div>
-        <div class="leg"><div class="leg-dot" style="background:#f59e0b;box-shadow:0 0 5px #f59e0b"></div>Satellite at ToT</div>
-        <div class="leg"><div style="width:12px;height:12px;border:1px dashed #6366f1;border-radius:50%;flex-shrink:0;"></div>Comm. Footprint (<span id="leg-comm-radius">420</span>km)</div>
-        <div class="leg"><div style="width:12px;height:12px;border:1px dashed #10b981;border-radius:50%;background:rgba(16,185,129,0.3);flex-shrink:0;"></div>Camera (<span id="leg-cam-radius">100</span>km)</div>
-      </div>
-    </div>
+        <div class="live" id="live">
+          <div class="live-top">
+            <span class="tag pulse" data-i18n="live.title">Live</span>
+            <span class="live-state" id="lv-state">--</span>
+          </div>
+          <div class="live-next">
+            <div><div class="k" id="lv-next-k" data-i18n="live.nextAos">Next contact</div><div class="v" id="lv-next">--:--:--</div></div>
+            <div class="s" id="lv-next-s"></div>
+          </div>
+          <div class="lgrid">
+            <div><div class="k" data-i18n="live.lat">Latitude</div><div class="v" id="lv-lat">--</div></div>
+            <div><div class="k" data-i18n="live.lon">Longitude</div><div class="v" id="lv-lon">--</div></div>
+            <div><div class="k" data-i18n="live.alt">Altitude</div><div class="v" id="lv-alt">--</div></div>
+            <div><div class="k" data-i18n="live.el">Elevation (station)</div><div class="v" id="lv-el">--</div></div>
+            <div><div class="k" data-i18n="live.az">Azimuth</div><div class="v" id="lv-az">--</div></div>
+            <div><div class="k" data-i18n="live.range">Range</div><div class="v" id="lv-rng">--</div></div>
+          </div>
+        </div>
 
-    <!-- Results -->
-    <div class="results" id="results">
+        <div class="empty" id="r-empty"><div class="t" data-i18n="read.emptyT">No plan computed yet</div><div data-i18n="read.emptyD">Check the settings, then select Compute plan.</div></div>
 
-      <!-- Card 1: Uplink Time -->
-      <div class="rcard r-time">
-        <div class="rcard-head">
-          <span class="rcard-icon">📡</span>
-          <span class="rcard-label">เวลาผ่านสถานี (Uplink Time)</span>
+        <div class="delay hide" id="r-delay">
+          <div class="delay-h"><span class="cap" data-i18n="read.delay">Command delay</span><button type="button" class="btn" id="copy-delay" data-i18n="read.copy">Copy</button></div>
+          <div class="delay-v" id="r-sec">--</div>
+          <div class="delay-hms" id="r-hms"></div>
+          <div class="delay-alt" id="r-alt"></div>
         </div>
-        <div class="time-val" id="r-uplink-utc" style="font-size:0.75rem">--/--/---- --:--:-- UTC</div>
-        <div class="time-val" id="r-uplink-ict" style="font-size:0.75rem;color:var(--c-amber)">--/--/---- --:--:-- ICT</div>
-      </div>
+        <div class="notes" id="r-notes"></div>
 
-      <!-- Card 2: Target Time -->
-      <div class="rcard r-time">
-        <div class="rcard-head">
-          <span class="rcard-icon">🎯</span>
-          <span class="rcard-label">เวลาครอบเป้าหมาย (Target)</span>
+        <div class="sect ev-s hide" id="r-ev">
+          <div class="sect-h"><span class="cap" data-i18n="ev.title">Event timeline</span></div>
+          <table class="ev">
+            <thead><tr><th data-i18n="ev.event">Event</th><th>ICT</th><th class="tm">T−</th></tr></thead>
+            <tbody id="ev-body"></tbody>
+          </table>
         </div>
-        <div class="time-val" id="r-target-utc" style="font-size:0.75rem">--/--/---- --:--:-- UTC</div>
-        <div class="time-val" id="r-target-ict" style="font-size:0.75rem;color:var(--c-amber)">--/--/---- --:--:-- ICT</div>
-      </div>
 
-      <!-- Card 3: Delay -->
-      <div class="rcard r-primary">
-        <div class="rcard-head">
-          <span class="rcard-icon">⏱️</span>
-          <span class="rcard-label">Command Delay ที่ต้องใช้</span>
-          <button class="copy-btn" id="copy-btn" title="Copy">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          </button>
+        <div class="sect geo-s hide" id="r-geo">
+          <div class="sect-h"><span class="cap" data-i18n="geo.title">Pass geometry</span></div>
+          <div class="geo">
+            <div><div class="k" data-i18n="geo.offset">Offset from target</div><div class="v" id="g-dist">--</div></div>
+            <div><div class="k" data-i18n="geo.elT">Elevation at target</div><div class="v" id="g-elt">--</div></div>
+            <div><div class="k" data-i18n="geo.sun">Sun elevation</div><div class="v" id="g-sun">--</div></div>
+            <div><div class="k" data-i18n="geo.alt">Altitude</div><div class="v" id="g-alt">--</div></div>
+            <div><div class="k" data-i18n="geo.elU">Max. elevation (uplink)</div><div class="v" id="g-elu">--</div></div>
+            <div><div class="k" data-i18n="geo.dur">Contact duration</div><div class="v" id="g-dur">--</div></div>
+            <div><div class="k" data-i18n="geo.range">Slant range at TCA</div><div class="v" id="g-rng">--</div></div>
+            <div><div class="k" data-i18n="geo.rf">One-way RF delay</div><div class="v" id="g-rf">--</div></div>
+          </div>
         </div>
-        <div class="delay-big">
-          <span class="delay-num" id="r-sec">--</span>
-          <span class="delay-unit">วินาที</span>
-        </div>
-        <div class="delay-hms" id="r-hms">--:--:--</div>
-      </div>
-
-      <!-- Card 4: Distance -->
-      <div class="rcard r-info">
-        <div class="rcard-head">
-          <span class="rcard-icon">📏</span>
-          <span class="rcard-label">ระยะห่างเป้าหมาย (Closest)</span>
-        </div>
-        <div class="delay-big">
-          <span class="metric-num" id="r-dist">--</span>
-          <span class="metric-unit">km</span>
-        </div>
-        <div class="metric-sub">ควร < <span id="leg-cam-radius2">100</span>km จึงจะถ่ายติด</div>
-      </div>
-
-      <!-- Card 5: Altitude -->
-      <div class="rcard r-info">
-        <div class="rcard-head">
-          <span class="rcard-icon">🛰️</span>
-          <span class="rcard-label">ความสูงดาวเทียม (Alt)</span>
-        </div>
-        <div class="delay-big">
-          <span class="metric-num" id="r-alt">--</span>
-          <span class="metric-unit">km</span>
-        </div>
-        <div class="metric-sub">ณ เวลาผ่านเป้าหมาย</div>
-      </div>
-
-      <!-- Card 6: Elevation -->
-      <div class="rcard r-info">
-        <div class="rcard-head">
-          <span class="rcard-icon">📐</span>
-          <span class="rcard-label">มุมเงยสถานี (Max Elev)</span>
-        </div>
-        <div class="delay-big">
-          <span class="metric-num" id="r-elev">--</span>
-          <span class="metric-unit">°</span>
-        </div>
-        <div class="metric-sub">ณ เวลาผ่านสถานีส่งคำสั่ง</div>
-      </div>
-
-      <!-- Card 7: Sun Elevation -->
-      <div class="rcard r-info">
-        <div class="rcard-head">
-          <span class="rcard-icon">☀️</span>
-          <span class="rcard-label">มุมเงยดวงอาทิตย์ (Sun Elev)</span>
-        </div>
-        <div class="delay-big">
-          <span class="metric-num" id="r-sun-elev">--</span>
-          <span class="metric-unit">°</span>
-        </div>
-        <div class="metric-sub">ณ เป้าหมาย ตอนถ่ายภาพ</div>
-      </div>
-
-      <!-- Card 8: Sat Elevation at Target -->
-      <div class="rcard r-info">
-        <div class="rcard-head">
-          <span class="rcard-icon">📡</span>
-          <span class="rcard-label">มุมเงยดาวเทียม ณ เป้าหมาย</span>
-        </div>
-        <div class="delay-big">
-          <span class="metric-num" id="r-sat-elev-target">--</span>
-          <span class="metric-unit">°</span>
-        </div>
-        <div class="metric-sub">ยิ่งสูง ภาพยิ่งตรง (ต้อง ≥ เงื่อนไข)</div>
-      </div>
-
-      <!-- Card 9: RF Signal Delay -->
-      <div class="rcard r-info">
-        <div class="rcard-head">
-          <span class="rcard-icon">📶</span>
-          <span class="rcard-label">RF Delay (สัญญาณอัปลิงก์)</span>
-        </div>
-        <div class="delay-big">
-          <span class="metric-num" id="r-rf-delay">--</span>
-          <span class="metric-unit">ms</span>
-        </div>
-        <div class="metric-sub" id="r-rf-dist">ระยะ -- km (ทางเดียว)</div>
-      </div>
-
-    </div><!-- /results -->
-
-    <!-- Countdown -->
-    <div class="countdown-bar" id="countdown-bar">
-      <div class="cd-item">
-        <span class="cd-icon">📡</span>
-        <div>
-          <div class="cd-label">Countdown ส่งคำสั่ง (Uplink)</div>
-          <div class="cd-value" id="cd-uplink">--:--:--</div>
+        <div class="read-actions hide" id="r-act">
+          <button type="button" class="btn" id="copy-plan" data-i18n="read.copyPlan">Copy plan summary</button>
         </div>
       </div>
-      <div class="cd-item">
-        <span class="cd-icon">📸</span>
-        <div>
-          <div class="cd-label">Countdown ถ่ายภาพ (Target)</div>
-          <div class="cd-value" id="cd-target">--:--:--</div>
-        </div>
-      </div>
-    </div>
+    </section>
 
-    <!-- Photo Windows Table -->
-    <div class="photo-table-wrap" id="photo-table-wrap">
-      <div class="photo-table-title">
-        📋 ทุกรอบที่หาได้ (<span id="photo-count">0</span> รอบ)
+    <!-- =============== PASSES =============== -->
+    <section class="pane p-passes" aria-labelledby="h-passes">
+      <div class="head"><span class="cap" id="h-passes" data-i18n="ps.title">Imaging opportunities</span><span class="mono" id="p-count" style="color:var(--muted)"></span>
+        <span class="meta"><label class="chk"><input type="checkbox" id="only-ok"><span data-i18n="ps.onlyOk">Usable only</span></label><button type="button" class="btn" id="export-csv" disabled>CSV</button></span>
       </div>
-      <table class="photo-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>เวลา (UTC)</th>
-            <th>เวลา (ICT)</th>
-            <th>Sat Elev</th>
-            <th>Sun Elev</th>
-            <th>Distance</th>
-            <th>สถานะ</th>
-          </tr>
-        </thead>
-        <tbody id="photo-tbody"></tbody>
-      </table>
-    </div>
-
-  </main>
+      <div class="p-body scroll">
+        <table class="ps">
+          <thead><tr>
+            <th class="n">#</th><th data-i18n="ps.img">Imaging (ICT)</th><th class="c-utc">UTC</th><th class="n" data-i18n="ps.el">El.</th><th class="n" data-i18n="ps.sun">Sun</th><th class="n" data-i18n="ps.off">Offset</th><th data-i18n="ps.up">Uplink TCA (ICT)</th><th class="n" data-i18n="ps.delay">Delay</th><th data-i18n="ps.status">Status</th>
+          </tr></thead>
+          <tbody id="p-tbody"></tbody>
+        </table>
+        <div class="p-empty" id="p-empty" data-i18n="ps.empty">No passes yet. Compute a plan to list them.</div>
+      </div>
+    </section>
+  </div>
 </div>
 
-<!-- ═══════════════════════════════════════════
-     SCRIPTS
-════════════════════════════════════════════ -->
+<nav class="tabs" role="tablist">
+  <button type="button" class="tab" role="tab" data-view="setup" aria-selected="true" data-i18n="tab.setup">Setup</button>
+  <button type="button" class="tab" role="tab" data-view="map" aria-selected="false" data-i18n="tab.map">Map</button>
+  <button type="button" class="tab" role="tab" data-view="read" aria-selected="false" data-i18n="tab.read">Readout</button>
+  <button type="button" class="tab" role="tab" data-view="passes" aria-selected="false"><span data-i18n="tab.passes">Passes</span><span class="cnt" id="tab-cnt"></span></button>
+</nav>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/satellite.js/5.0.0/satellite.min.js"></script>
-<script>
-/* ═══════════════════════════════════════════════════════
-   STARS BACKGROUND
-══════════════════════════════════════════════════════ */
-(function(){
-  const cv = document.getElementById('stars-canvas');
-  const ctx = cv.getContext('2d');
-  const stars = [];
-  function resize(){cv.width=window.innerWidth;cv.height=window.innerHeight;}
-  function init(){
-    resize();stars.length=0;
-    for(let i=0;i<200;i++){
-      stars.push({x:Math.random()*cv.width,y:Math.random()*cv.height,
-        r:Math.random()*1.1+0.2,a:Math.random(),da:Math.random()*0.004+0.001});
-    }
-  }
-  function draw(){
-    ctx.clearRect(0,0,cv.width,cv.height);
-    stars.forEach(s=>{
-      s.a+=s.da;if(s.a>1||s.a<0)s.da*=-1;
-      ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
-      ctx.fillStyle=`rgba(200,220,255,${s.a*0.6})`;ctx.fill();
-    });
-    requestAnimationFrame(draw);
-  }
-  window.addEventListener('resize',init);
-  init();draw();
-})();
-
-/* ═══════════════════════════════════════════════════════
-   PRESETS
-══════════════════════════════════════════════════════ */
-const GS = {
-  kmutnb: {lat:13.824017540980227,lon:100.5126084380669,name:'KMUTNB TECHNO PARK, Bangkok'},
-};
-const TGT = {
-  paris:   {lat:46.6034, lon:1.8883,    name:'France (Center)'},
-};
-
-/* ═══════════════════════════════════════════════════════
-   STATE
-══════════════════════════════════════════════════════ */
-const S = {
-  uplink:{lat:13.824017540980227,lon:100.5126084380669,name:'KMUTNB TECHNO PARK'},
-  target:{lat:46.6034,  lon:1.8883,    name:'France (Center)'},
-  uplinkMode:'kmutnb',
-  targetMode:'paris',
-  map:null,
-  mUplink:null,mTarget:null,mSat:null,
-  layers:[],
-  busy:false,
-  suggestedTime:null,
-  lastResult:null,
-  countdownTimer:null,
-  allCandidates:[],
-  currentSatrec:null,
-  currentCfgGsElev:20,
-  selectedIdx:0,
-};
-
-/* ═══════════════════════════════════════════════════════
-   MAP
-══════════════════════════════════════════════════════ */
-function initMap(){
-  S.map = L.map('map',{zoomControl:false,worldCopyJump:true}).setView([30,50],3);
-  L.control.zoom({position:'topright'}).addTo(S.map);
-
-  // Satellite base + labels overlay
-  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{
-    attribution:'Tiles &copy; Esri',maxZoom:18
-  }).addTo(S.map);
-
-  // Labels on top
-  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{
-    attribution:'',maxZoom:18,opacity:0.5
-  }).addTo(S.map);
-
-  S.mUplink = makeMarker(S.uplink,'#3b82f6','📡').addTo(S.map);
-  S.mTarget = makeMarker(S.target,'#ef4444','🎯').addTo(S.map);
-
-  // Drag
-  S.mUplink.on('dragend',e=>{
-    if(S.uplinkMode==='custom'){const p=e.target.getLatLng();setLoc('uplink',p.lat,p.lng,true);}
-  });
-  S.mTarget.on('dragend',e=>{
-    if(S.targetMode==='custom'){const p=e.target.getLatLng();setLoc('target',p.lat,p.lng,true);}
-  });
-
-  // Map click
-  S.map.on('click',e=>{
-    if(S.uplinkMode==='custom') setLoc('uplink',e.latlng.lat,e.latlng.lng);
-    else if(S.targetMode==='custom') setLoc('target',e.latlng.lat,e.latlng.lng);
-  });
-
-  fitBounds();
-}
-
-function makeMarker(loc,color,emoji){
-  const ico = L.divIcon({
-    className:'',
-    html:`<div style="
-      width:20px;height:20px;border-radius:50%;
-      background:${color};border:2.5px solid rgba(255,255,255,0.9);
-      box-shadow:0 0 14px ${color},0 2px 6px rgba(0,0,0,0.5);
-      display:flex;align-items:center;justify-content:center;
-      font-size:9px;color:#fff;font-weight:700;
-    "></div>`,
-    iconSize:[20,20],iconAnchor:[10,10]
-  });
-  return L.marker([loc.lat,loc.lon],{icon:ico,draggable:false,zIndexOffset:100})
-    .bindPopup(popup(loc.name||'',loc.lat,loc.lon));
-}
-
-function makeSatMarker(lat,lon,alt,dist,elev,timeStr){
-  const ico = L.divIcon({
-    className:'',
-    html:`<div style="font-size:24px;filter:drop-shadow(0 0 6px rgba(245,158,11,0.9));line-height:1;">🛰️</div>`,
-    iconSize:[24,24],iconAnchor:[12,12]
-  });
-  return L.marker([lat,lon],{icon:ico,zIndexOffset:200})
-    .bindPopup(`<b>🛰️ Satellite at ToT</b><br>
-      Altitude: <b>${alt.toFixed(1)} km</b><br>
-      Dist → Target: <b>${dist.toFixed(1)} km</b><br>
-      Elevation: <b>${elev.toFixed(1)}°</b><br>
-      Time (UTC): <b>${timeStr}</b>`);
-}
-
-function popup(name,lat,lon){
-  return `<b>${name}</b><br>
-    <span style="font-family:'JetBrains Mono',monospace;font-size:0.78em;color:#94a3b8">
-    ${lat.toFixed(5)}, ${lon.toFixed(5)}</span>`;
-}
-
-function fitBounds(){
-  if(!S.map||!S.mUplink||!S.mTarget)return;
-  S.map.fitBounds(L.featureGroup([S.mUplink,S.mTarget]).getBounds(),{padding:[70,70]});
-}
-
-function clearLayers(){
-  S.layers.forEach(l=>S.map.removeLayer(l));
-  S.layers=[];
-  if(S.mSat){S.map.removeLayer(S.mSat);S.mSat=null;}
-}
-
-/* ═══════════════════════════════════════════════════════
-   LOCATION LOGIC
-══════════════════════════════════════════════════════ */
-function setLoc(type,lat,lon,fromDrag=false){
-  S[type].lat=+lat; S[type].lon=+lon;
-  const m = type==='uplink'?S.mUplink:S.mTarget;
-  if(m&&!fromDrag) m.setLatLng([lat,lon]);
-  if(m) m.setPopupContent(popup(S[type].name||'Custom',lat,lon));
-  if(type==='uplink'){setVal('uplink-lat',lat.toFixed(4));setVal('uplink-lon',lon.toFixed(4));}
-  else               {setVal('target-lat',lat.toFixed(4));setVal('target-lon',lon.toFixed(4));}
-}
-
-/* ═══════════════════════════════════════════════════════
-   COORD PARSING
-══════════════════════════════════════════════════════ */
-function parseCoords(s){
-  let m;
-  m=s.match(/^(-?\d+(?:\.\d+)?)[,\s]+(-?\d+(?:\.\d+)?)$/);
-  if(m)return{lat:+m[1],lon:+m[2]};
-  m=s.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
-  if(m)return{lat:+m[1],lon:+m[2]};
-  m=s.match(/[?&](?:q|ll)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
-  if(m)return{lat:+m[1],lon:+m[2]};
-  return null;
-}
-
-
-
-/* ═══════════════════════════════════════════════════════
-   MATH
-══════════════════════════════════════════════════════ */
-const D2R=Math.PI/180, R2D=180/Math.PI;
-function hav(la1,lo1,la2,lo2){
-  const R=6371,dlat=(la2-la1)*D2R,dlon=(lo2-lo1)*D2R;
-  const a=Math.sin(dlat/2)**2+Math.cos(la1*D2R)*Math.cos(la2*D2R)*Math.sin(dlon/2)**2;
-  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-}
-function fmtSec(t){
-  const neg=t<0,abs=Math.abs(Math.round(t));
-  const h=Math.floor(abs/3600),m=Math.floor((abs%3600)/60),s=abs%60;
-  return (neg?'-':'')+(h+'').padStart(2,'0')+':'+(m+'').padStart(2,'0')+':'+(s+'').padStart(2,'0');
-}
-function fmtUTC(d){return d.toISOString().replace('T',' ').slice(0,19)+' UTC';}
-function fmtICT(d){
-  const i=new Date(d.getTime()+7*3600000);
-  return i.toISOString().replace('T',' ').slice(0,19)+' ICT';
-}
-function elevAngle(oLa,oLo,sLa,sLo,sAlt){
-  const Re=6371;
-  const cos=Math.cos(oLa*D2R)*Math.cos(sLa*D2R)*Math.cos((sLo-oLo)*D2R)+Math.sin(oLa*D2R)*Math.sin(sLa*D2R);
-  const el=Math.acos(Math.max(-1,Math.min(1,cos)));
-  const slant=Math.sqrt(Re*Re+(Re+sAlt)*(Re+sAlt)-2*Re*(Re+sAlt)*Math.cos(el));
-  return Math.asin(Math.max(-1,Math.min(1,(Math.cos(el)*(Re+sAlt)-Re)/slant)))*R2D;
-}
-
-/* ═══════════════════════════════════════════════════════
-   MISSION PLANNING SEARCH
-══════════════════════════════════════════════════════ */
-function getSunElevation(date, lat, lon) {
-  const jd = (date.getTime() / 86400000.0) + 2440587.5;
-  const n = jd - 2451545.0; // days since J2000
-  const L = (280.460 + 0.9856474 * n) % 360; 
-  let g = (357.528 + 0.9856003 * n) % 360; 
-  if(g < 0) g += 360;
-  const eclipticLon = L + 1.915 * Math.sin(g * Math.PI/180) + 0.020 * Math.sin(2 * g * Math.PI/180);
-  const obliquity = 23.439 - 0.0000004 * n; 
-  const declination = Math.asin(Math.sin(obliquity * Math.PI/180) * Math.sin(eclipticLon * Math.PI/180)) * 180/Math.PI;
-  const ra = Math.atan2(Math.cos(obliquity * Math.PI/180) * Math.sin(eclipticLon * Math.PI/180), Math.cos(eclipticLon * Math.PI/180)) * 180/Math.PI;
-  const T = n / 36525.0;
-  let GMST = 280.46061837 + 360.98564736629 * n + 0.000387933 * T * T - T * T * T / 38710000.0;
-  GMST = GMST % 360;
-  if(GMST < 0) GMST += 360;
-  const LST = (GMST + lon) % 360;
-  let H = (LST - ra);
-  if(H < -180) H += 360;
-  if(H > 180) H -= 360;
-  const latRad = lat * Math.PI/180;
-  const decRad = declination * Math.PI/180;
-  const hRad = H * Math.PI/180;
-  const sinElev = Math.sin(latRad)*Math.sin(decRad) + Math.cos(latRad)*Math.cos(decRad)*Math.cos(hRad);
-  return Math.asin(sinElev) * 180/Math.PI;
-}
-
-async function findAllTargetPassesAsync(satrec, startRef, lat, lon, maxDays, minSatElev, minSunElev, maxSunElev, onProgress) {
-  const maxMins = maxDays * 24 * 60;
-  const candidates = [];
-  let prevElev = -100, prevPrevElev = -100;
-  const CHUNK = 2000;
-
-  for (let start = 0; start <= maxMins; start += CHUNK) {
-    const end = Math.min(start + CHUNK, maxMins + 1);
-
-    for (let dt = start; dt < end; dt++) {
-      const time = new Date(startRef.getTime() + dt * 60000);
-      const pv = satellite.propagate(satrec, time);
-      if (!pv?.position) { prevPrevElev = prevElev; prevElev = -100; continue; }
-      const gd = satellite.eciToGeodetic(pv.position, satellite.gstime(time));
-      const elev = elevAngle(lat, lon, satellite.degreesLat(gd.latitude), satellite.degreesLong(gd.longitude), gd.height);
-
-      if (prevElev > prevPrevElev && prevElev > elev) {
-        if (prevElev > minSatElev - 10) {
-          const coarseTime = new Date(startRef.getTime() + (dt - 1) * 60000);
-          let maxRefinedElev = -100, refinedTime = null, refinedGd = null;
-          for (let s = -60; s <= 60; s += 2) {
-            const rt = new Date(coarseTime.getTime() + s * 1000);
-            const rpv = satellite.propagate(satrec, rt);
-            if (!rpv?.position) continue;
-            const rgd = satellite.eciToGeodetic(rpv.position, satellite.gstime(rt));
-            const relev = elevAngle(lat, lon, satellite.degreesLat(rgd.latitude), satellite.degreesLong(rgd.longitude), rgd.height);
-            if (relev > maxRefinedElev) { maxRefinedElev = relev; refinedTime = rt; refinedGd = rgd; }
-          }
-
-          if (maxRefinedElev >= minSatElev) {
-            const sunElev = getSunElevation(refinedTime, lat, lon);
-            if (sunElev >= minSunElev && sunElev <= maxSunElev) {
-              const rd = hav(satellite.degreesLat(refinedGd.latitude), satellite.degreesLong(refinedGd.longitude), lat, lon);
-              candidates.push({ time: refinedTime, dist: rd, gd: refinedGd, satElev: maxRefinedElev, sunElev: sunElev });
-            }
-          }
-        }
-      }
-      prevPrevElev = prevElev; prevElev = elev;
-    }
-
-    await new Promise(r => setTimeout(r, 0));
-    if (onProgress) onProgress(Math.min(end / maxMins, 1));
-  }
-
-  return candidates;
-}
-
-function findUplinkPass(satrec, targetTime, lat, lon, minGsElev, searchDays) {
-  searchDays = searchDays || 30;
-  const maxMins = searchDays * 24 * 60;
-  let inPass = false, maxElev = -Infinity, bestPassTime = null;
-
-  for (let dt = 0; dt >= -maxMins; dt--) {
-    const time = new Date(targetTime.getTime() + dt * 60000);
-    const pv = satellite.propagate(satrec, time);
-    if (!pv?.position) continue;
-    const gd = satellite.eciToGeodetic(pv.position, satellite.gstime(time));
-    const relev = elevAngle(lat, lon, satellite.degreesLat(gd.latitude), satellite.degreesLong(gd.longitude), gd.height);
-
-    if (relev > minGsElev) {
-      if (!inPass) { inPass = true; maxElev = relev; bestPassTime = time; }
-      else { if (relev > maxElev) { maxElev = relev; bestPassTime = time; } }
-    } else {
-      if (inPass) {
-        let refinedMaxElev = -Infinity, refinedTime = null;
-        for (let s = -60; s <= 60; s++) {
-          const rt = new Date(bestPassTime.getTime() + s * 1000);
-          const rpv = satellite.propagate(satrec, rt);
-          if (!rpv?.position) continue;
-          const rgd = satellite.eciToGeodetic(rpv.position, satellite.gstime(rt));
-          const el = elevAngle(lat, lon, satellite.degreesLat(rgd.latitude), satellite.degreesLong(rgd.longitude), rgd.height);
-          if (el > refinedMaxElev) { refinedMaxElev = el; refinedTime = rt; }
-        }
-        if (refinedMaxElev >= minGsElev) return { time: refinedTime, elev: refinedMaxElev };
-        inPass = false; maxElev = -Infinity; bestPassTime = null;
-      }
-    }
-  }
-  return null;
-}
-
-function calcRfDelay(satrec, time, stationLat, stationLon) {
-  const pv = satellite.propagate(satrec, time);
-  if (!pv?.position) return null;
-  const gmst = satellite.gstime(time);
-  const gd = satellite.eciToGeodetic(pv.position, gmst);
-  const satLat = satellite.degreesLat(gd.latitude);
-  const satLon = satellite.degreesLong(gd.longitude);
-  const satAlt = gd.height;
-  const Re = 6371;
-  const toXYZ = (la, lo, r) => ({
-    x: r * Math.cos(la * D2R) * Math.cos(lo * D2R),
-    y: r * Math.cos(la * D2R) * Math.sin(lo * D2R),
-    z: r * Math.sin(la * D2R)
-  });
-  const sta = toXYZ(stationLat, stationLon, Re);
-  const sat = toXYZ(satLat, satLon, Re + satAlt);
-  const dist = Math.sqrt((sat.x - sta.x) ** 2 + (sat.y - sta.y) ** 2 + (sat.z - sta.z) ** 2);
-  const c = 299792.458;
-  return { distKm: dist, delayMs: (dist / c) * 1000, delaySec: dist / c };
-}
-
-function groundTrack(satrec,ref,refUplink){
-  const pts=[];
-  for(let t=-140*60;t<=140*60;t+=30){
-    const time=new Date(ref.getTime()+t*1000);
-    const pv=satellite.propagate(satrec,time);
-    if(!pv?.position)continue;
-    const gd=satellite.eciToGeodetic(pv.position,satellite.gstime(time));
-    pts.push({lat:satellite.degreesLat(gd.latitude),lon:satellite.degreesLong(gd.longitude),after:time>=refUplink});
-  }
-  return pts;
-}
-
-function toSegs(pts){
-  const segs=[];let cur=[];
-  pts.forEach((p,i)=>{
-    if(i>0&&Math.abs(p.lon-pts[i-1].lon)>180){segs.push(cur);cur=[];}
-    cur.push([p.lat,p.lon]);
-  });
-  if(cur.length)segs.push(cur);
-  return segs;
-}
-
-/* ═══════════════════════════════════════════════════════
-   CALCULATE
-══════════════════════════════════════════════════════ */
-async function calculate(){
-  if(S.busy)return;
-  hideWarn();
-  stopCountdown();
-
-  const tleRaw=$('tle-input').value.trim();
-  if(!tleRaw){setStatus('กรุณาใส่ TLE','err');return;}
-
-  const lines=tleRaw.split('\n').map(l=>l.trim()).filter(Boolean);
-  let l1='',l2='';
-  for(let i=0;i<lines.length;i++){
-    if(lines[i].startsWith('1 ')&&lines[i+1]?.startsWith('2 ')){l1=lines[i];l2=lines[i+1];break;}
-  }
-  if(!l1||!l2){setStatus('TLE ไม่ถูกต้อง','err');return;}
-
-  setBusy(true);
-  showProgress(0);
-
-  const cfgDays = parseFloat($('cfg-search-days').value) || 20;
-  const cfgSatElev = parseFloat($('cfg-sat-elev').value) || 70;
-  const cfgSunMin = parseFloat($('cfg-sun-min').value) || 20;
-  const cfgSunMax = parseFloat($('cfg-sun-max').value) || 90;
-  const cfgGsElev = parseFloat($('cfg-gs-elev').value) || 20;
-
-  setStatus(`🔍 ค้นหารอบถ่ายภาพ (${cfgDays} วัน, เงย ≥${cfgSatElev}°, แดด ${cfgSunMin}°-${cfgSunMax}°)...`,'info');
-
-  try{
-    const satrec=satellite.twoline2satrec(l1,l2);
-    const now = new Date();
-
-    const candidates = await findAllTargetPassesAsync(
-      satrec, now, S.target.lat, S.target.lon,
-      cfgDays, cfgSatElev, cfgSunMin, cfgSunMax,
-      (progress) => {
-        showProgress(progress * 100);
-        setStatus(`🔍 ค้นหารอบถ่ายภาพ... ${Math.round(progress * 100)}%`,'info');
-      }
-    );
-
-    if(candidates.length === 0){
-      hideProgress();
-      setBusy(false);
-      setStatus(`❌ ไม่พบรอบผ่านเป้าหมายที่ผ่านเงื่อนไขใน ${cfgDays} วัน`,'err');
-      showWarn(`ไม่พบรอบที่ดาวเทียมมีมุมเงย ≥ ${cfgSatElev}° และแดด ${cfgSunMin}°-${cfgSunMax}° — ลองลดมุมเงยขั้นต่ำหรือขยายจำนวนวัน`);
-      return;
-    }
-
-    S.allCandidates = candidates;
-    S.currentSatrec = satrec;
-    S.currentCfgGsElev = cfgGsElev;
-
-    renderPhotoTable(candidates);
-    showProgress(95);
-    setStatus(`📡 พบ ${candidates.length} รอบ — กำลังหาเวลาอัปลิงก์...`,'info');
-
-    await new Promise(r => setTimeout(r, 30));
-
-    displayResult(satrec, candidates, 0, cfgGsElev);
-
-    hideProgress();
-    setBusy(false);
-
-  }catch(e){
-    console.error(e);
-    hideProgress();
-    setBusy(false);
-    setStatus(`❌ ${e.message}`,'err');
-  }
-}
-
-function displayResult(satrec, candidates, idx, cfgGsElev){
-  const candidate = candidates[idx];
-  S.selectedIdx = idx;
-
-  document.querySelectorAll('.photo-table tbody tr').forEach((tr, i) => {
-    tr.classList.toggle('selected', i === idx);
-  });
-
-  setStatus('📡 ค้นหารอบผ่านสถานีส่งคำสั่ง...','info');
-  const uplinkRes = findUplinkPass(satrec, candidate.time, S.uplink.lat, S.uplink.lon, cfgGsElev);
-
-  if(!uplinkRes){
-    showWarn('ไม่พบรอบผ่านสถานีส่งคำสั่งก่อนเวลาเป้าหมายนี้');
-    setStatus('⚠️ ไม่พบ uplink pass','warn');
-    return;
-  }
-
-  const delay = (candidate.time.getTime() - uplinkRes.time.getTime()) / 1000;
-
-  const sLat = satellite.degreesLat(candidate.gd.latitude);
-  const sLon = satellite.degreesLong(candidate.gd.longitude);
-  const sAlt = candidate.gd.height;
-
-  const rf = calcRfDelay(satrec, uplinkRes.time, S.uplink.lat, S.uplink.lon);
-
-  setText('r-uplink-utc', fmtUTC(uplinkRes.time));
-  setText('r-uplink-ict', fmtICT(uplinkRes.time));
-  setText('r-target-utc', fmtUTC(candidate.time));
-  setText('r-target-ict', fmtICT(candidate.time));
-
-  setText('r-sec', Math.round(delay));
-  setText('r-hms', fmtSec(delay));
-
-  setText('r-dist', candidate.dist.toFixed(1));
-  setText('r-alt', sAlt.toFixed(1));
-  setText('r-elev', uplinkRes.elev.toFixed(1));
-
-  setText('r-sun-elev', candidate.sunElev.toFixed(1));
-  setText('r-sat-elev-target', candidate.satElev.toFixed(1));
-
-  if(rf){
-    setText('r-rf-delay', rf.delayMs.toFixed(2));
-    $('r-rf-dist').textContent = `ระยะ ${rf.distKm.toFixed(1)} km (ทางเดียว)`;
-  }
-
-  $('copy-btn').style.opacity='1';
-
-  const rDiv=$('results');
-  rDiv.classList.remove('result-ready');
-  void rDiv.offsetWidth;
-  rDiv.classList.add('result-ready');
-
-  const camRadius = parseFloat($('cfg-cam-radius')?.value) || 100;
-  if($('leg-cam-radius')) $('leg-cam-radius').textContent = camRadius;
-  if($('leg-cam-radius2')) $('leg-cam-radius2').textContent = camRadius;
-
-  hideWarn();
-  if(candidate.dist > camRadius){
-    showWarn(`⚠️ เป้าหมายไม่ได้อยู่กึ่งกลางภาพ (ห่าง ${candidate.dist.toFixed(1)} km) แต่เป็นรอบที่ดีที่สุดที่หาได้`);
-  }
-
-  clearLayers();
-  const track=groundTrack(satrec,candidate.time,candidate.time);
-  const pre=track.filter(p=>!p.after),post=track.filter(p=>p.after);
-
-  if(pre.length>1){
-    const l=L.polyline(toSegs(pre),{color:'rgba(148,163,184,0.4)',weight:1.5,dashArray:'4,4'});
-    S.map.addLayer(l);S.layers.push(l);
-  }
-  if(post.length>1){
-    const l=L.polyline(toSegs(post),{color:'#ef4444',weight:2,opacity:0.8,dashArray:'6,4'});
-    S.map.addLayer(l);S.layers.push(l);
-  }
-
-  const Re=6371;
-  const frComm = parseFloat($('cfg-comm-radius')?.value) || 420;
-  if($('leg-comm-radius')) $('leg-comm-radius').textContent = frComm;
-
-  const fcComm = L.circle([sLat,sLon],{
-    radius: frComm*1000, color: '#6366f1', fillColor: 'transparent',
-    weight: 1.5, dashArray: '5,5', opacity: 0.6
-  });
-  S.map.addLayer(fcComm); S.layers.push(fcComm);
-
-  const frCam = camRadius;
-  const fcCam = L.circle([sLat,sLon],{
-    radius: frCam*1000, color: '#10b981', fillColor: '#10b981',
-    fillOpacity: 0.15, weight: 2, dashArray: '3,3'
-  });
-  S.map.addLayer(fcCam); S.layers.push(fcCam);
-
-  const l1l=L.polyline([[S.uplink.lat,S.uplink.lon],[sLat,sLon]],{color:'#3b82f6',weight:1.5,opacity:0.65,dashArray:'3,5'});
-  const l2l=L.polyline([[sLat,sLon],[S.target.lat,S.target.lon]],{color:'#ef4444',weight:1.5,opacity:0.65,dashArray:'3,5'});
-  S.map.addLayer(l1l);S.map.addLayer(l2l);
-  S.layers.push(l1l,l2l);
-
-  S.mSat=makeSatMarker(sLat,sLon,sAlt,candidate.dist,uplinkRes.elev,fmtUTC(candidate.time)).addTo(S.map);
-
-  S.map.fitBounds(
-    L.featureGroup([S.mUplink,S.mTarget,S.mSat]).getBounds(),
-    {padding:[60,60]}
-  );
-
-  startCountdown(uplinkRes.time, candidate.time);
-
-  setStatus(`✅ สำเร็จ! แสดงรอบที่ ${idx + 1}/${candidates.length}`,'ok');
-}
-
-/* ═══════════════════════════════════════════════════════
-   UI HELPERS
-══════════════════════════════════════════════════════ */
-const $=id=>document.getElementById(id);
-const setText=(id,v)=>$(id).textContent=v;
-const setVal=(id,v)=>{if($(id))$(id).value=v;};
-
-function setBusy(on){
-  S.busy=on;
-  $('calc-btn').disabled=on;
-  $('btn-label').classList.toggle('hide',on);
-  $('btn-spin').classList.toggle('hide',!on);
-}
-
-function setStatus(msg,type='info'){
-  setText('status-text',msg);
-  const d=$('status-dot');
-  const colors={ok:'#10b981',err:'#ef4444',warn:'#f59e0b',info:'#3b82f6'};
-  d.style.background=colors[type]||colors.info;
-  d.style.boxShadow=`0 0 8px ${d.style.background}`;
-}
-
-function showWarn(msg, showSuggest=false){
-  const b=$('warn-bar');
-  b.querySelector('#warn-text').textContent=msg;
-  b.classList.add('show');
-  const sbtn=$('suggest-btn');
-  if(showSuggest) sbtn.classList.remove('hide');
-  else            sbtn.classList.add('hide');
-}
-function hideWarn(){
-  $('warn-bar').classList.remove('show');
-  $('suggest-btn').classList.add('hide');
-}
-// --- Update ICT Preview ---
-function copyDelay(){
-  const sec=$('r-sec').textContent,hms=$('r-hms').textContent;
-  if(sec==='--')return;
-  navigator.clipboard.writeText(`${sec} วินาที (${hms})`).then(()=>{
-    const btn=$('copy-btn');
-    const orig=btn.innerHTML;
-    btn.innerHTML=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
-    setTimeout(()=>btn.innerHTML=orig,1500);
-  });
-}
-
-/* ═══════════════════════════════════════════════════════
-   NEW HELPER FUNCTIONS
-══════════════════════════════════════════════════════ */
-function showProgress(pct){
-  const overlay=$('progress-overlay');
-  if(overlay){
-    overlay.classList.add('show');
-    $('progress-fill').style.width = Math.round(pct)+'%';
-    $('progress-text').textContent = `กำลังค้นหารอบถ่ายภาพ... ${Math.round(pct)}%`;
-  }
-}
-function hideProgress(){
-  const o=$('progress-overlay');
-  if(o) o.classList.remove('show');
-}
-
-function renderPhotoTable(candidates){
-  const wrap=$('photo-table-wrap');
-  const tbody=$('photo-tbody');
-  const count=$('photo-count');
-  count.textContent=candidates.length;
-  tbody.innerHTML='';
-
-  candidates.forEach((c,i)=>{
-    const tr=document.createElement('tr');
-    if(i===0) tr.classList.add('selected');
-    const ict=fmtICT(c.time);
-    const utc=fmtUTC(c.time);
-    const camRadius = parseFloat($('cfg-cam-radius')?.value) || 100;
-    const badge = c.dist<=camRadius
-      ? '<span class="badge badge-ok">✅ ดี</span>'
-      : '<span class="badge badge-warn">⚠️ ไกล</span>';
-    tr.innerHTML=`
-      <td>${i+1}</td>
-      <td>${utc}</td>
-      <td>${ict}</td>
-      <td>${c.satElev.toFixed(1)}°</td>
-      <td>${c.sunElev.toFixed(1)}°</td>
-      <td>${c.dist.toFixed(1)} km</td>
-      <td>${badge}</td>
-    `;
-    tr.addEventListener('click',()=>selectCandidate(i));
-    tbody.appendChild(tr);
-  });
-
-  wrap.classList.add('show');
-}
-
-function selectCandidate(idx){
-  if(!S.currentSatrec||!S.allCandidates.length)return;
-  displayResult(S.currentSatrec, S.allCandidates, idx, S.currentCfgGsElev);
-}
-
-function formatCountdown(ms){
-  if(ms<=0) return 'ผ่านไปแล้ว';
-  const totalSec=Math.floor(ms/1000);
-  const d=Math.floor(totalSec/86400);
-  const h=Math.floor((totalSec%86400)/3600);
-  const m=Math.floor((totalSec%3600)/60);
-  const s=totalSec%60;
-  const pad=x=>String(x).padStart(2,'0');
-  if(d>0) return `${d}d ${pad(h)}:${pad(m)}:${pad(s)}`;
-  return `${pad(h)}:${pad(m)}:${pad(s)}`;
-}
-
-function startCountdown(uplinkTime, targetTime){
-  stopCountdown();
-  const bar=$('countdown-bar');
-  if(bar) bar.classList.add('show');
-
-  function update(){
-    const now=Date.now();
-    const uplinkMs=uplinkTime.getTime()-now;
-    const targetMs=targetTime.getTime()-now;
-
-    const cdU=$('cd-uplink');
-    if(cdU){
-      cdU.textContent=formatCountdown(uplinkMs);
-      cdU.className='cd-value'+(uplinkMs<=0?' past':uplinkMs<3600000?' urgent':'');
-    }
-    const cdT=$('cd-target');
-    if(cdT){
-      cdT.textContent=formatCountdown(targetMs);
-      cdT.className='cd-value'+(targetMs<=0?' past':targetMs<3600000?' urgent':'');
-    }
-  }
-
-  update();
-  S.countdownTimer=setInterval(update,1000);
-}
-
-function stopCountdown(){
-  if(S.countdownTimer){
-    clearInterval(S.countdownTimer);
-    S.countdownTimer=null;
-  }
-  const bar=$('countdown-bar');
-  if(bar) bar.classList.remove('show');
-}
-
-/* ═══════════════════════════════════════════════════════
-   INIT & EVENTS
-══════════════════════════════════════════════════════ */
-document.addEventListener('DOMContentLoaded',()=>{
-  // Theme Toggle
-  const themeToggle = document.getElementById('theme-toggle');
-  const themeIcon = document.getElementById('theme-icon');
-  function updateThemeIcon() {
-    if(document.documentElement.getAttribute('data-theme') === 'dark') {
-      themeIcon.textContent = '☀️';
-    } else {
-      themeIcon.textContent = '🌙';
-    }
-  }
-  updateThemeIcon();
-  if(themeToggle) {
-    themeToggle.addEventListener('click', () => {
-      let current = document.documentElement.getAttribute('data-theme');
-      let target = current === 'dark' ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', target);
-      localStorage.setItem('theme', target);
-      updateThemeIcon();
-    });
-  }
-
-  try {
-    initMap();
-  } catch(e) {
-    console.error("Map init failed", e);
-    setStatus('⚠️ แผนที่โหลดไม่สำเร็จ (เครือข่ายอาจบล็อก) แต่ยังคำนวณได้', 'warn');
-  }
-
-  // Uplink select
-  $('sel-uplink').addEventListener('change',e=>{
-    S.uplinkMode=e.target.value;
-    const box=$('uplink-custom');
-    if(GS[S.uplinkMode]){
-      const g=GS[S.uplinkMode];
-      S.uplink={...g};setLoc('uplink',g.lat,g.lon);
-      S.mUplink.dragging.disable();
-      box.classList.add('hide');
-      setStatus(`สถานี: ${g.name}`,'info');
-    }else{
-      box.classList.remove('hide');
-      S.mUplink.dragging.enable();
-      setStatus('คลิกบนแผนที่ หรือพิมพ์พิกัด Uplink','info');
-    }
-    fitBounds();
-  });
-
-  // Target select
-  $('sel-target').addEventListener('change',e=>{
-    S.targetMode=e.target.value;
-    const box=$('target-custom');
-    if(TGT[S.targetMode]){
-      const t=TGT[S.targetMode];
-      S.target={...t};setLoc('target',t.lat,t.lon);
-      S.mTarget.dragging.disable();
-      box.classList.add('hide');
-      setStatus(`เป้าหมาย: ${t.name}`,'info');
-    }else{
-      box.classList.remove('hide');
-      S.mTarget.dragging.enable();
-      setStatus('คลิกบนแผนที่ หรือพิมพ์พิกัด Target','info');
-    }
-    fitBounds();
-  });
-
-  // Manual lat/lon inputs
-  [{id:'uplink-lat',t:'uplink',f:'lat'},{id:'uplink-lon',t:'uplink',f:'lon'},
-   {id:'target-lat',t:'target',f:'lat'},{id:'target-lon',t:'target',f:'lon'}]
-  .forEach(({id,t,f})=>{
-    $(id)?.addEventListener('change',e=>{
-      const v=parseFloat(e.target.value);
-      if(isNaN(v))return;
-      if(f==='lat') setLoc(t,v,S[t].lon);
-      else          setLoc(t,S[t].lat,v);
-    });
-  });
-
-  // Link inputs
-  [{id:'uplink-link',t:'uplink'},{id:'target-link',t:'target'}].forEach(({id,t})=>{
-    $(id)?.addEventListener('input',e=>{
-      const raw=e.target.value.trim();
-      if(!raw)return;
-      const c=parseCoords(raw);
-      if(c){
-        setLoc(t,c.lat,c.lon);
-        setStatus(`📍 ${t} ตั้งพิกัด: ${c.lat.toFixed(4)}, ${c.lon.toFixed(4)}`,'ok');
-        e.target.value='';
-      }else if(raw.includes('goo.gl')||raw.includes('maps.app')){
-        alert('ลิงก์สั้น — กรุณาเปิดในเบราว์เซอร์แล้วคัดลอก URL เต็มที่มี @lat,lon');
-        e.target.value='';
-      }else if(raw.startsWith('http')){
-        alert('ไม่พบพิกัดใน URL นี้ ต้องมี @lat,lon หรือ ?q=lat,lon');
-        e.target.value='';
-      }
-    });
-  });
-
-  $('calc-btn').addEventListener('click',()=>{
-    calculate().catch(err=>{
-      console.error(err);
-      setStatus('❌ '+err.message,'err');
-      setBusy(false);
-      hideProgress();
-    });
-  });
-  $('copy-btn').addEventListener('click',copyDelay);
-
-  // Live clock
-  setInterval(()=>{
-    const d = new Date();
-    const pad = x => String(x).padStart(2,'0');
-    if($('live-clock')) {
-      $('live-clock').textContent =
-        `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ` +
-        `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-    }
-  }, 1000);
-});
-
-function scrollToSection(cls){
-  const el = document.querySelector('.' + cls) || document.getElementById(cls);
-  if(el){
-    el.scrollIntoView({behavior:'smooth'});
-    document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.getAttribute('onclick')?.includes(cls));
-    });
-  }
-}
-</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="core.js"></script>
+<script src="i18n.js"></script>
+<script src="globe.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
